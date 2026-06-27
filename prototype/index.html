@@ -19,6 +19,21 @@
 </head>
 <body>
 <div id="wrap"><canvas id="game"></canvas></div>
+<noscript style="color:#fff;position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center">
+  JavaScript staat uit. Zet JavaScript aan of open dit bestand in Safari/Chrome.
+</noscript>
+<script>
+// Toont een eventuele JS-fout als tekst op het scherm (anders zie je alleen blauw).
+window.onerror = function (msg, src, line, col) {
+  var d = document.getElementById("err") || document.createElement("div");
+  d.id = "err";
+  d.style.cssText = "position:fixed;left:0;top:0;right:0;z-index:99;background:#400;color:#ffd6d6;" +
+    "font:13px/1.4 monospace;padding:12px;white-space:pre-wrap";
+  d.textContent = "JS-fout: " + msg + "\n(regel " + line + ":" + col + ")";
+  document.body.appendChild(d);
+  return false;
+};
+</script>
 <script>
 (() => {
   "use strict";
@@ -524,8 +539,13 @@
   function frame(now) {
     let dt = (now - last) / 1000; last = now;
     if (dt > 0.05) dt = 0.05;
-    update(dt);
-    render();
+    try {
+      update(dt);
+      render();
+    } catch (e) {
+      window.onerror("in frame: " + (e && e.message ? e.message : e), "", 0, 0);
+      return; // stop de loop zodat de fout leesbaar blijft
+    }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
