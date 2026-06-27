@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Roef de Vis — To the Top (prototype)</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #04121f;
+    overflow: hidden;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-user-select: none; user-select: none;
+    touch-action: none;
+  }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; background: #07263c; box-shadow: 0 0 40px rgba(0,0,0,.6); }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="game"></canvas></div>
+<script>
+(() => {
+  "use strict";
+
+  // ---------------------------------------------------------------------------
+  // Config — Roef de Vis: To the Top (speelbaar prototype)
+  // ---------------------------------------------------------------------------
+  const CFG = {
+    levelsTall: 5,            // hoogte van het level in schermen
+    maxCanvasW: 480,          // op desktop centreren; op telefoon = volle breedte
+    playerSpeed: 320,         // px/s waarmee Roef zijn vinger volgt
+    sinkSpeed: 70,            // px/s zakken als je loslaat
+    netSlow: 0.45,            // snelheidsfactor terwijl je door een net glipt
+    playerR: 16,
+    hearts: 3,
+    invulnTime: 1.2,          // onkwetsbaar na een treffer (s)
+    // jager (monstervis) per tier: snelheid (px/s) en grootte
+    predators: [
+      { speed: 165, size: 30, color: "#3a5d74", name: "kleine monstervis" },
+      { speed: 205, size: 46, color: "#2f4a63", name: "grote monstervis" },
+      { speed: 250, size: 68, color: "#21303f", name: "reuzen-monstervis" },
+    ],
+    predatorRamp: 6,          // extra px/s per 10s (oplopende druk)
+  };
+
+  // ---------------------------------------------------------------------------
+  // Canvas / DPI
+  // ---------------------------------------------------------------------------
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  let VW = 0, VH = 0, DPR = 1;
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    VW = Math.min(window.innerWidth, CFG.maxCanvasW);
+    VH = window.innerHeight;
+    canvas.style.width = VW + "px";
+    canvas.style.height = VH + "px";
+    canvas.width = Math.round(VW * DPR);
+    canvas.height = Math.round(VH * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---------------------------------------------------------------------------
+  // Input (muis + touch via pointer events)
+  // ---------------------------------------------------------------------------
+  const ptr = { active: false, x: VW / 2, y: VH / 2 };
+  function setPtr(e) {
+    const r = canvas.getBoundingClientRect();
+    ptr.x = e.clientX - r.left;
+    ptr.y = e.clientY - r.top;
+  }
+  canvas.addEventListener("pointerdown", (e) => {
+    setPtr(e); ptr.active = true;
+    if (state === "title") startGame();
+    else if (state === "win" || state === "lose") resetToTitle();
+    e.preventDefault();
+  });
+  canvas.addEventListener("pointermove", (e) => { setPtr(e); e.preventDefault(); });
+  canvas.addEventListener("pointerup",   (e) => { ptr.active = false; e.preventDefault(); });
+  canvas.addEventListener("pointercancel", () => { ptr.active = false; });
+
+  // ---------------------------------------------------------------------------
+  // Game state
+  // ---------------------------------------------------------------------------
+  let state = "title";   // title | play | winning | win | lose
+  let world = { h: VH * CFG.levelsTall }, camY = 0;   // defaults zodat de titel-achtergrond werkt
+  let player, predator, caught, nets, obstacles, bubbles;
+  let score, hearts, time = 0, banner, bannerT, winT;
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  function makePredator(tier, y) {
+    const p = CFG.predators[Math.min(tier, CFG.predators.length - 1)];
+    return { tier, y, x: player.x, vis: p, wob: 0 };
+  }
+
+  function startGame() {
+    const worldH = VH * CFG.levelsTall;
+    world = { h: worldH };
+    player = { x: VW / 2, y: worldH - 70, r: CFG.playerR, inNet: false, invuln: 0 };
+    hearts = CFG.hearts;
+    score = 0; time = 0; winT = 0;
+    banner = ""; bannerT = 0;
+
+    // 3 netten: net1 -> tier2, net2 -> tier3, eindnet -> gevangen + win
+    nets = [
+      { y: worldH * 0.70, passed: false, final: false },
+      { y: worldH * 0.42, passed: false, final: false },
+      { y: worldH * 0.13, passed: false, final: true },
+    ];
+
+    // obstakels verspreid over het level (niet te dicht bij netten/start)
+    obstacles = [];
+    const nearNet = (y) => nets.some((n) => Math.abs(n.y - y) < 70);
+    for (let i = 0; i < 46; i++) {
+      const y = rnd(160, worldH - 220);
+      if (nearNet(y)) continue;
+      const type = Math.random() < 0.55 ? "rock" : "jelly";
+      obstacles.push({
+        type, x: rnd(30, VW - 30), y,
+        r: type === "rock" ? rnd(20, 40) : rnd(16, 24),
+        vx: type === "jelly" ? (Math.random() < 0.5 ? -1 : 1) * rnd(20, 55) : 0,
+        ph: rnd(0, 6.28),
+      });
+    }
+
+    // luchtbellen (score)
+    bubbles = [];
+    for (let i = 0; i < 60; i++) {
+      bubbles.push({ x: rnd(20, VW - 20), y: rnd(120, worldH - 120), r: rnd(5, 9), got: false });
+    }
+
+    caught = [];   // monstervissen die in een net vast zitten
+    predator = makePredator(0, player.y + VH * 0.85);
+    camY = clamp(player.y - VH * 0.62, 0, worldH - VH);
+    state = "play";
+    flash("Een monstervis zit achter je!");
+  }
+
+  function resetToTitle() { state = "title"; }
+  function flash(msg) { banner = msg; bannerT = 2.2; }
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+
+  function hurt(knockY) {
+    if (player.invuln > 0) return;
+    hearts--; player.invuln = CFG.invulnTime;
+    player.y += knockY;                 // teruggeslagen naar beneden -> jager wint terrein
+    flash("Au! " + hearts + " ❤ over");
+    if (hearts <= 0) state = "lose";
+  }
+
+  // ---------------------------------------------------------------------------
+  // Update
+  // ---------------------------------------------------------------------------
+  function update(dt) {
+    time += dt;
+    if (state !== "play" && state !== "winning") return;
+
+    // --- speler ---
+    if (state === "play") {
+      let maxStep = CFG.playerSpeed * dt;
+      if (player.inNet) maxStep *= CFG.netSlow;
+      if (ptr.active) {
+        const tx = ptr.x, ty = ptr.y + camY;
+        const dx = tx - player.x, dy = ty - player.y;
+        const d = Math.hypot(dx, dy) || 1;
+        const step = Math.min(d, maxStep);
+        player.x += (dx / d) * step;
+        player.y += (dy / d) * step;
+      } else {
+        player.y += CFG.sinkSpeed * dt;   // loslaten = zakken
+      }
+      player.x = clamp(player.x, player.r, VW - player.r);
+      player.y = clamp(player.y, 40, world.h - player.r);
+      if (player.invuln > 0) player.invuln -= dt;
+    } else if (state === "winning") {
+      player.y -= 260 * dt;               // triomfantelijk naar het oppervlak
+      winT += dt;
+      if (winT > 1.6) { state = "win"; }
+    }
+
+    // --- net passeren: glippen door + escalatie ---
+    player.inNet = false;
+    for (const n of nets) {
+      if (Math.abs(player.y - n.y) < 16) player.inNet = true;
+      if (!n.passed && player.y < n.y) {
+        n.passed = true;
+        // huidige jager komt vast te zitten in dit net
+        caught.push({ y: n.y, x: predator.x, vis: predator.vis, wob: 0 });
+        if (n.final) {
+          state = "winning"; winT = 0;
+          flash("De grote vis zit vast in het net!");
+        } else {
+          // afgeschud -> nieuwe, grotere monstervis komt van onderaf
+          predator = makePredator(predator.tier + 1, player.y + VH * 1.1);
+          flash("Afgeschud! Grotere monstervis komt eraan!");
+        }
+      }
+    }
+
+    // --- jager (monstervis) ---
+    if (state === "play") {
+      const ramp = (time / 10) * CFG.predatorRamp;
+      const sp = predator.vis.speed + ramp;
+      predator.y -= sp * dt;                       // stijgt richting Roef
+      predator.x += (player.x - predator.x) * Math.min(1, 1.6 * dt);
+      predator.wob += dt * 6;
+      // botsing met Roef = einde
+      if (Math.hypot(predator.x - player.x, predator.y - player.y) < predator.vis.size * 0.7 + player.r) {
+        state = "lose"; flash("Gepakt!");
+      }
+    }
+
+    // --- obstakels ---
+    for (const o of obstacles) {
+      if (o.type === "jelly") {
+        o.x += o.vx * dt;
+        if (o.x < o.r || o.x > VW - o.r) o.vx *= -1;
+      }
+      if (state === "play" && player.invuln <= 0) {
+        const d = Math.hypot(o.x - player.x, o.y - player.y);
+        if (d < o.r + player.r) {
+          // weg-stoten van het obstakel, met duw naar beneden
+          const nx = (player.x - o.x) / (d || 1);
+          player.x = clamp(player.x + nx * 14, player.r, VW - player.r);
+          hurt(34);
+        }
+      }
+    }
+
+    // --- bellen verzamelen ---
+    for (const b of bubbles) {
+      if (b.got) continue;
+      if (Math.hypot(b.x - player.x, b.y - player.y) < b.r + player.r + 4) { b.got = true; score++; }
+    }
+
+    // --- camera (volgt Roef, niet terug naar beneden) ---
+    const targetCam = clamp(player.y - VH * 0.62, 0, world.h - VH);
+    camY = Math.min(camY, targetCam);            // alleen omhoog
+    camY = clamp(camY, 0, world.h - VH);
+    if (player.y - camY > VH - 60) camY = player.y - (VH - 60); // Roef niet uit beeld
+
+    if (bannerT > 0) bannerT -= dt;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+  const S = (wy) => wy - camY;   // wereld-y -> scherm-y
+
+  function drawWater() {
+    // verloop: licht aan oppervlak (boven), donker in de diepte (onder)
+    const depthTop = camY / world.h;        // 0 oppervlak .. 1 diep
+    const g = ctx.createLinearGradient(0, 0, 0, VH);
+    const shade = (t) => {
+      const top = [38, 132, 168], bot = [4, 18, 31];
+      const r = Math.round(top[0] + (bot[0] - top[0]) * t);
+      const gr = Math.round(top[1] + (bot[1] - top[1]) * t);
+      const b = Math.round(top[2] + (bot[2] - top[2]) * t);
+      return `rgb(${r},${gr},${b})`;
+    };
+    g.addColorStop(0, shade(clamp(depthTop, 0, 1)));
+    g.addColorStop(1, shade(clamp(depthTop + VH / world.h, 0, 1)));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, VW, VH);
+
+    // oppervlak-band als die in beeld is
+    const surfY = S(0);
+    if (surfY > -40 && surfY < VH) {
+      ctx.fillStyle = "rgba(180,235,255,.25)";
+      ctx.fillRect(0, surfY - 6, VW, 12);
+      ctx.fillStyle = "rgba(120,200,235,.15)";
+      ctx.fillRect(0, 0, VW, Math.max(0, surfY));
+    }
+    // zachte lichtstralen
+    ctx.save();
+    ctx.globalAlpha = 0.06 * (1 - depthTop);
+    ctx.fillStyle = "#dffaff";
+    for (let i = 0; i < 5; i++) {
+      const x = ((i * 97 + 30) % VW);
+      ctx.beginPath();
+      ctx.moveTo(x, 0); ctx.lineTo(x + 40, 0); ctx.lineTo(x + 110, VH); ctx.lineTo(x + 60, VH);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function fishPath(cx, cy, size, wob, color, mouth) {
+    // simpele vis die omhoog wijst (neus boven, staart onder)
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.sin(wob) * 0.08);
+    // staart
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, size * 0.7);
+    ctx.lineTo(-size * 0.55, size * 1.15);
+    ctx.lineTo(size * 0.55, size * 1.15);
+    ctx.closePath();
+    ctx.fill();
+    // lijf
+    ctx.beginPath();
+    ctx.ellipse(0, 0, size * 0.6, size, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // mond (bij de jager: happende bek met tanden)
+    if (mouth) {
+      ctx.fillStyle = "#0a0f14";
+      ctx.beginPath();
+      ctx.ellipse(0, -size * 0.78, size * 0.34, size * 0.26 + Math.abs(Math.sin(wob)) * size * 0.12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * size * 0.16, -size * 0.92);
+        ctx.lineTo(i * size * 0.16 - size * 0.05, -size * 0.78);
+        ctx.lineTo(i * size * 0.16 + size * 0.05, -size * 0.78);
+        ctx.fill();
+      }
+    }
+    // oog
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(size * 0.28, -size * 0.45, size * 0.18, 0, 6.28); ctx.fill();
+    ctx.fillStyle = "#10202c";
+    ctx.beginPath(); ctx.arc(size * 0.32, -size * 0.45, size * 0.09, 0, 6.28); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawRoef() {
+    if (player.invuln > 0 && Math.floor(time * 12) % 2 === 0) return; // knipper bij i-frames
+    const cx = player.x, cy = S(player.y), s = player.r;
+    ctx.save();
+    ctx.translate(cx, cy);
+    // staart
+    ctx.fillStyle = "#ff7a2f";
+    ctx.beginPath();
+    ctx.moveTo(0, s * 0.6); ctx.lineTo(-s * 0.7, s * 1.25); ctx.lineTo(s * 0.7, s * 1.25);
+    ctx.closePath(); ctx.fill();
+    // zijvinnen
+    ctx.fillStyle = "#ff9c5e";
+    ctx.beginPath(); ctx.ellipse(-s * 0.6, s * 0.1, s * 0.35, s * 0.18, 0.6, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s * 0.6, s * 0.1, s * 0.35, s * 0.18, -0.6, 0, 6.28); ctx.fill();
+    // lijf
+    ctx.fillStyle = "#ff8a3d";
+    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.7, s, 0, 0, 6.28); ctx.fill();
+    ctx.fillStyle = "#ffd9b0";
+    ctx.beginPath(); ctx.ellipse(0, s * 0.15, s * 0.4, s * 0.65, 0, 0, 6.28); ctx.fill();
+    // oog
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(s * 0.28, -s * 0.45, s * 0.22, 0, 6.28); ctx.fill();
+    ctx.fillStyle = "#16242e"; ctx.beginPath(); ctx.arc(s * 0.33, -s * 0.45, s * 0.11, 0, 6.28); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawNet(n) {
+    const y = S(n.y);
+    if (y < -30 || y > VH + 30) return;
+    const h = 26;
+    ctx.save();
+    ctx.strokeStyle = "rgba(235,240,220,.55)";
+    ctx.lineWidth = 1.5;
+    // ruitjes-mesh
+    for (let x = -h; x < VW + h; x += 14) {
+      ctx.beginPath(); ctx.moveTo(x, y - h / 2); ctx.lineTo(x + h, y + h / 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + h, y - h / 2); ctx.lineTo(x, y + h / 2); ctx.stroke();
+    }
+    // touwen boven/onder
+    ctx.strokeStyle = "rgba(120,90,60,.9)"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0, y - h / 2); ctx.lineTo(VW, y - h / 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, y + h / 2); ctx.lineTo(VW, y + h / 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawObstacle(o) {
+    const y = S(o.y);
+    if (y < -50 || y > VH + 50) return;
+    if (o.type === "rock") {
+      ctx.fillStyle = "#3b4754";
+      ctx.beginPath(); ctx.arc(o.x, y, o.r, 0, 6.28); ctx.fill();
+      ctx.fillStyle = "#2a333d";
+      ctx.beginPath(); ctx.arc(o.x - o.r * 0.3, y - o.r * 0.3, o.r * 0.5, 0, 6.28); ctx.fill();
+    } else {
+      const pulse = 1 + Math.sin(time * 3 + o.ph) * 0.08;
+      ctx.save();
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = "#d98cff";
+      ctx.beginPath(); ctx.ellipse(o.x, y, o.r * pulse, o.r * 0.8 * pulse, 0, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = "rgba(217,140,255,.6)"; ctx.lineWidth = 2;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath(); ctx.moveTo(o.x + i * o.r * 0.3, y);
+        ctx.quadraticCurveTo(o.x + i * o.r * 0.3 + Math.sin(time * 4 + i) * 5, y + o.r * 1.4, o.x + i * o.r * 0.3, y + o.r * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawBubble(b) {
+    if (b.got) return;
+    const y = S(b.y);
+    if (y < -10 || y > VH + 10) return;
+    ctx.strokeStyle = "rgba(220,250,255,.7)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(b.x, y, b.r, 0, 6.28); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.5)";
+    ctx.beginPath(); ctx.arc(b.x - b.r * 0.3, y - b.r * 0.3, b.r * 0.3, 0, 6.28); ctx.fill();
+  }
+
+  function drawHUD() {
+    // hartjes
+    ctx.font = "20px system-ui";
+    ctx.textBaseline = "top";
+    for (let i = 0; i < CFG.hearts; i++) {
+      ctx.globalAlpha = i < hearts ? 1 : 0.25;
+      ctx.fillText("❤", 12 + i * 26, 12);
+    }
+    ctx.globalAlpha = 1;
+    // score (bellen)
+    ctx.fillStyle = "#dffaff"; ctx.font = "bold 18px system-ui";
+    ctx.textAlign = "right";
+    ctx.fillText("🫧 " + score, VW - 12, 14);
+    ctx.textAlign = "left";
+
+    // voortgangsbalk (diepte -> oppervlak) rechts
+    const bx = VW - 10, top = 70, bot = VH - 90, h = bot - top;
+    ctx.fillStyle = "rgba(255,255,255,.15)"; ctx.fillRect(bx - 4, top, 6, h);
+    const prog = 1 - clamp(player.y / world.h, 0, 1);   // 1 = aan top
+    ctx.fillStyle = "#7fe0ff"; ctx.fillRect(bx - 4, bot - h * prog, 6, h * prog);
+    ctx.font = "11px system-ui"; ctx.fillStyle = "#bfe9ff"; ctx.textAlign = "right";
+    ctx.fillText("TOP", bx - 12, top - 2);
+    ctx.textAlign = "left";
+
+    // jager-nabijheid: rode gloed onderaan
+    if (state === "play") {
+      const d = predator.y - player.y;            // afstand onder Roef
+      const near = clamp(1 - d / (VH * 0.9), 0, 1);
+      if (near > 0.05) {
+        const g = ctx.createLinearGradient(0, VH, 0, VH - 160 * near);
+        g.addColorStop(0, `rgba(200,30,30,${0.5 * near})`);
+        g.addColorStop(1, "rgba(200,30,30,0)");
+        ctx.fillStyle = g; ctx.fillRect(0, VH - 160, VW, 160);
+        if (near > 0.6 && Math.floor(time * 4) % 2 === 0) {
+          ctx.fillStyle = "#ffd2d2"; ctx.font = "bold 16px system-ui"; ctx.textAlign = "center";
+          ctx.fillText("⚠ achter je!", VW / 2, VH - 40); ctx.textAlign = "left";
+        }
+      }
+    }
+
+    // banner-melding
+    if (bannerT > 0 && banner) {
+      ctx.globalAlpha = clamp(bannerT, 0, 1);
+      ctx.fillStyle = "rgba(0,0,0,.45)";
+      ctx.fillRect(0, VH * 0.32, VW, 40);
+      ctx.fillStyle = "#fff"; ctx.font = "bold 15px system-ui"; ctx.textAlign = "center";
+      ctx.fillText(banner, VW / 2, VH * 0.32 + 12);
+      ctx.textAlign = "left"; ctx.globalAlpha = 1;
+    }
+  }
+
+  function centerText(lines) {
+    ctx.fillStyle = "rgba(0,10,20,.6)"; ctx.fillRect(0, 0, VW, VH);
+    ctx.textAlign = "center";
+    let y = VH * 0.32;
+    for (const l of lines) {
+      ctx.fillStyle = l.c || "#fff";
+      ctx.font = l.f || "18px system-ui";
+      ctx.fillText(l.t, VW / 2, y);
+      y += l.s || 30;
+    }
+    ctx.textAlign = "left";
+  }
+
+  function render() {
+    drawWater();
+    if (state === "title") {
+      centerText([
+        { t: "🐟  ROEF DE VIS", f: "bold 30px system-ui", s: 40, c: "#ffb066" },
+        { t: "To the Top", f: "italic 20px system-ui", s: 50, c: "#cfeeff" },
+        { t: "Sleep om te zwemmen — loslaten = zakken.", f: "15px system-ui", s: 28 },
+        { t: "Glip door de netten — de monstervis", f: "15px system-ui", s: 24 },
+        { t: "kan er niet door en raakt verstrikt.", f: "15px system-ui", s: 44 },
+        { t: "Ontwijk rotsen & kwallen. Haal de top!", f: "15px system-ui", s: 50, c: "#9fd" },
+        { t: "▶ Tik om te starten", f: "bold 20px system-ui", c: "#fff" },
+      ]);
+      return;
+    }
+
+    // wereld
+    nets.forEach(drawNet);
+    for (const c of caught) {        // monstervissen vast in de netten
+      const y = S(c.y);
+      if (y > -80 && y < VH + 80) { c.wob += 0.02; fishPath(c.x, y, c.vis.size, c.wob + time * 4, c.vis.color, true); }
+    }
+    obstacles.forEach(drawObstacle);
+    bubbles.forEach(drawBubble);
+    if (state === "play") fishPath(predator.x, S(predator.y), predator.vis.size, predator.wob, predator.vis.color, true);
+    drawRoef();
+    drawHUD();
+
+    if (state === "win") {
+      centerText([
+        { t: "🎉 The Top!", f: "bold 30px system-ui", s: 42, c: "#9fd" },
+        { t: "Roef ontsnapt — klein zijn redt hem!", s: 40 },
+        { t: "🫧 " + score + " bellen verzameld", s: 50, c: "#cfeeff" },
+        { t: "...maar boven water cirkelt een meeuw 🐦", f: "italic 17px system-ui", s: 30, c: "#ffd2a0" },
+        { t: "Wordt vervolgd —", f: "italic 17px system-ui", s: 46, c: "#ffd2a0" },
+        { t: "▶ Tik om opnieuw te spelen", f: "bold 18px system-ui", c: "#fff" },
+      ]);
+    } else if (state === "lose") {
+      centerText([
+        { t: "🦈 Gepakt!", f: "bold 30px system-ui", s: 42, c: "#ff8080" },
+        { t: "De monstervis was net iets sneller.", s: 44 },
+        { t: "🫧 " + score + " bellen verzameld", s: 50, c: "#cfeeff" },
+        { t: "▶ Tik om opnieuw te proberen", f: "bold 18px system-ui", c: "#fff" },
+      ]);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Loop
+  // ---------------------------------------------------------------------------
+  let last = performance.now();
+  function frame(now) {
+    let dt = (now - last) / 1000; last = now;
+    if (dt > 0.05) dt = 0.05;
+    update(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 > Een verticale mobiele arcade-game waarin **Roef de vis** naar het wateroppervlak
 > zwemt om te ontsnappen aan het monster dat hem van onderaf achtervolgt.
 
-![status](https://img.shields.io/badge/status-concept-blue)
+![status](https://img.shields.io/badge/status-prototype-green)
 ![platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android-lightgrey)
 
 ---
@@ -45,12 +45,26 @@ Aan het oppervlak gebeurt er telkens iets onverwachts en grappigs (zie
 - 🫧 **Power-ups & collectibles** — luchtbellen, boosts en schilden.
 - 🕸️ **Het net als ontknoping** — Roef glipt erdoorheen, de grote vis raakt verstrikt.
 
+## Prototype spelen ▶️
+
+Er is een **speelbaar HTML5-prototype** (één bestand, geen build):
+
+```bash
+cd prototype
+python3 -m http.server 8000   # open http://localhost:8000
+```
+
+Of open `prototype/index.html` direct in een browser. **Sleep** om Roef te laten
+zwemmen, **loslaten** om te zakken. Glip door de netten, ontwijk rotsen en kwallen,
+en haal de top. Zie [prototype/README.md](prototype/README.md) voor details.
+
 ## Documentatie
 
 | Document | Inhoud |
 |----------|--------|
 | [docs/DESIGN.md](docs/DESIGN.md) | Volledig Game Design Document (GDD) |
 | [docs/REVIEW.md](docs/REVIEW.md) | Review van het idee + aanbevelingen |
+| [prototype/](prototype/) | Speelbaar HTML5-prototype van de kern-gameplay |
 
 ## De verhaalboog (escalerende jager → het net)
 
@@ -68,8 +82,10 @@ De spanning bouwt op via de **voedselketen**:
 
 ## Status & roadmap (kort)
 
-Dit project staat in de **conceptfase**. De eerstvolgende mijlpaal is een
-speelbare verticale-slice (MVP). Zie de [roadmap in het GDD](docs/DESIGN.md#14-roadmap--milestones).
+Er is een **speelbaar prototype** dat de kern-gameplay valideert (zwemmen, obstakels,
+escalerende jager, net-ontknoping, cliffhanger). De eerstvolgende mijlpaal is een
+volledige verticale-slice (MVP). Zie de
+[roadmap in het GDD](docs/DESIGN.md#14-roadmap--milestones).
 
 ## Licentie
 

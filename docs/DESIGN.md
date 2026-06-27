@@ -88,18 +88,23 @@ met oplopende muziek.
 - **HUD (minimaal):**
   - Hoogte-/voortgangsbalk aan de zijkant (hoe ver tot het oppervlak).
   - Jager-nabijheid-indicator (onderaan, kleurt rood als de monstervis dichtbij is).
-  - Health/lucht-indicator (zie §8).
+  - Health-indicator (hartjes; zie §8). **Geen zuurstof-/luchtmeter — we zijn een vis.**
   - Score / verzamelde bellen.
 - **Leesbaarheid:** UI uit de duim-zones houden; gameplay nooit onder de vingers.
 
 ## 5. Besturing
 
-**Aanbevolen schema — touch-drag (volle breedte):**
-- De speler legt de duim op het scherm; Roef volgt de horizontale vingerpositie.
-- **Omhoog zwemmen = actief**: tikken/vasthouden geeft een stuwstoot omhoog; loslaten
-  laat Roef langzaam terugzakken (drijfvermogen). Dit geeft skill-expressie en ritme.
+**Gekozen schema (prototype) — sleep-besturing (volle breedte):**
+- De speler legt de duim op het scherm; **Roef volgt de vingerpositie** (horizontaal
+  én verticaal), met een gemaximeerde zwemsnelheid zodat obstakels en de jager ertoe
+  blijven doen.
+- **Loslaten** laat Roef langzaam terugzakken (drijfvermogen) → de jager wint terrein.
+  Dit geeft de pick-up-and-play-gevoel om de kern snel te valideren.
+- Dit is geïmplementeerd in het [prototype](../prototype/). Het "actief stuwen"-variant
+  (vasthouden = stoot omhoog) blijft een te testen alternatief.
 
 **Alternatieven (te testen):**
+- **Actief stuwen:** vasthouden = stuwstoot omhoog, loslaten = zakken; meer skill/ritme.
 - **Auto-rise:** Roef stijgt automatisch; speler stuurt alleen links/rechts. Simpeler,
   minder diep.
 - **Tilt:** telefoon kantelen voor links/rechts. Afgeraden als primair (onnauwkeurig),
@@ -179,9 +184,10 @@ Obstakels maken het moeilijker om omhoog te komen. Categorieën:
 
 ## 8. Power-ups & collectibles
 
-- 🫧 **Luchtbellen** — basis-collectible (score) en/of vullen een **lucht/zuurstofmeter**
-  (optioneel faalmechanisme naast het monster). Beslissing: zie open vragen.
-- ⚡ **Boost** — tijdelijke snelheidsstoot omhoog (afstand winnen op het monster).
+- 🫧 **Luchtbellen** — basis-collectible voor **score** (in het prototype al
+  geïmplementeerd). **Geen zuurstofmeter** — een vis hoeft geen lucht te happen; de
+  enige tijdsdruk is de jager.
+- ⚡ **Boost** — tijdelijke snelheidsstoot omhoog (afstand winnen op de jager).
 - 🛡️ **Schild/bubbel** — absorbeert één treffer van een obstakel.
 - 🧲 **Magneet** — trekt luchtbellen aan.
 - ⭐ **Sterren/munten** — meta-valuta voor skins/upgrades (later).
@@ -310,8 +316,8 @@ zonder uitleg.
 
 | Milestone | Inhoud | Doel |
 |-----------|--------|------|
-| **M0 — Concept** | Dit GDD + review (✅ huidige stap) | Gedeelde visie |
-| **M1 — Prototype** | Besturing + monster-chase + 1 obstakel, grijze blokken | Validatie "core fun" |
+| **M0 — Concept** | Dit GDD + review | ✅ Gedeelde visie |
+| **M1 — Prototype** | Besturing, escalerende jager, netten, obstakels, net-ontknoping ([`prototype/`](../prototype/)) | ✅ Validatie "core fun" |
 | **M2 — Verticale slice** | MVP-scope (§13) speelbaar op telefoon | Eerste echte speeltest |
 | **M3 — Wereld 1** | Volledige eerste wereld, art/audio-pass, twist A | Vertical product |
 | **M4 — Content & polish** | Meer werelden, power-ups, twists B/C/D | Soft launch |
@@ -323,20 +329,25 @@ Te bepalen na fun-validatie. Opties: gratis met advertenties (rewarded ads voor
 extra leven/boost), eenmalige "remove ads", cosmetische skins voor Roef. Geen
 pay-to-win; difficulty moet eerlijk blijven.
 
-## 16. Open vragen
-
-1. **Lucht/zuurstofmeter:** willen we naast de jager een tweede tijdsdruk
-   (zuurstof)? Risico: te veel druk. Voorstel: MVP zonder, later testen.
-2. **Besturing definitief:** touch-drag + actief zwemmen bevestigen via prototype.
-3. **Levelhoogte:** hoeveel schermen voelt goed (spanning vs. frustratie)? Tunen in M2.
-4. **Faal-model:** jager = instant fail; obstakels = health/levens? Bevestigen.
+## 16. Beslissingen & open vragen
 
 ### Vastgelegde beslissingen ✅
+- **Geen zuurstofmeter** — we zijn een vis; de enige tijdsdruk is de jager.
+- **Besturing:** sleep-besturing (Roef volgt je vinger, volle breedte; loslaten =
+  zakken). In het prototype geïmplementeerd; "actief stuwen" blijft een te testen
+  variant.
+- **Levelhoogte:** **5 schermen** (prototype-default; verder tunen in M2).
+- **Faal-model:** **jager-contact = direct verloren**; obstakels kosten een hartje
+  (3 hartjes).
 - **Aantal schakels:** **3 monstervissen** over het hele spel (1 escalatie in de MVP).
 - **Net als tactiek:** **ja** — Roef kan zijn jager afschudden via een net, waarna een
   nieuwe, grotere monstervis verschijnt (§6, §7).
 - **Knipoog na ontsnapping:** **cliffhanger** — nieuwe dreiging boven water als hint
   naar een vervolg (§10).
 
-### Nog open
-5. **Endless-modus:** wel/niet, en wanneer (post-MVP).
+### Nog open (later tunen/testen)
+1. **Besturingsvariant:** is "actief stuwen" leuker dan "vinger volgen"? A/B-testen.
+2. **Levelhoogte fijn-tunen:** voelen 5 schermen goed (spanning vs. frustratie)?
+3. **Scripted "opgegeten worden"-beat:** als tweede escalatie-trigger naast de
+   net-afschud nog toevoegen (nu alleen net-afschud in het prototype).
+4. **Endless-modus:** wel/niet, en wanneer (post-MVP).
