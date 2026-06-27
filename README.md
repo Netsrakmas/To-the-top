@@ -15,10 +15,19 @@ Zwem omhoog, ontwijk de obstakels, blijf het monster voor — en haal **the top*
 
 ## Het idee
 
-Roef is een kleine vis op de bodem van de zee/het meer. Diep onder hem ontwaakt
-een hongerig **monster** dat langzaam omhoog komt. De enige uitweg is naar boven:
-Roef moet door meerdere schermen hoge levels heen zwemmen, langs rotsen, kwallen,
-stroming en visnetten, totdat hij het oppervlak doorbreekt.
+Roef is een kleine vis op de bodem van de zee/het meer. Diep onder hem jaagt een
+**monstervis**. De enige uitweg is naar boven: Roef moet door meerdere schermen
+hoge levels heen zwemmen, langs rotsen, kwallen, stroming en visnetten, totdat hij
+het oppervlak doorbreekt.
+
+Het spannende: de jager verandert. Onderweg wordt de monstervis die Roef
+achtervolgt **opgegeten door een nóg grotere monstervis** — en die daarna eventueel
+weer door een nog grotere. De voedselketen ("grote vis eet kleine vis") loopt op en
+de druk wordt steeds groter.
+
+De ontknoping draait het om: bij het oppervlak hangt een **visnet**. Roef is klein
+genoeg om er dwars doorheen te zwemmen — de grote monstervis niet, en raakt
+verstrikt. Roef ontsnapt. Klein zijn was uiteindelijk zijn redding.
 
 Het spel speelt zich af over de **volledige breedte** van het scherm — je beweegt
 Roef links/rechts en stuwt hem omhoog terwijl het beeld meescrolt naar boven.
@@ -30,10 +39,10 @@ Aan het oppervlak gebeurt er telkens iets onverwachts en grappigs (zie
 
 - 📱 **Verticale gameplay over de volle schermbreedte** — gemaakt voor mobiel, één hand.
 - 🌊 **Levels van meerdere schermen hoog** — elk level eindigt bij het oppervlak.
-- 👹 **Constante dreiging van onderaf** — het monster komt op; stilstaan is verliezen.
+- 👹 **Escalerende jager** — een kleine monstervis wordt opgegeten door een grotere; de druk loopt op.
 - 🪨 **Obstakels & hazards** — rotsen, kwallen, stroming, netten en meer.
 - 🫧 **Power-ups & collectibles** — luchtbellen, boosts en schilden.
-- 😂 **Verrassende, humoristische eind-twists** per level/wereld.
+- 🕸️ **Het net als ontknoping** — Roef glipt erdoorheen, de grote vis raakt verstrikt.
 
 ## Documentatie
 
@@ -42,26 +51,25 @@ Aan het oppervlak gebeurt er telkens iets onverwachts en grappigs (zie
 | [docs/DESIGN.md](docs/DESIGN.md) | Volledig Game Design Document (GDD) |
 | [docs/REVIEW.md](docs/REVIEW.md) | Review van het idee + aanbevelingen |
 
-## Eindscenario's (de twist)
+## De verhaalboog (escalerende jager → het net)
 
-Aan het einde van een level/wereld breekt Roef door het oppervlak en gebeurt er
-iets onverwachts. We werken meerdere varianten uit in het GDD; de favoriete
-opzet:
+De spanning bouwt op via de **voedselketen**:
 
-1. **Het monster wordt gevangen** — Roef ontsnapt, maar het monster dat hem
-   achtervolgde schiet door het oppervlak en wordt door een visser/harpoen
-   gevangen. (Aanbevolen — geeft de speler een voldaan gevoel.)
-2. **Roef in het netje** — Roef springt uit het water en belandt in een
-   schepnetje van spelende kinderen — bittersweet en grappig.
-3. **Van de regen in de drup** — boven water wacht een meeuw/visser als nieuwe
-   dreiging die de volgende wereld inluidt.
+1. Roef wordt achtervolgd door een **kleine monstervis**.
+2. Op een dramatisch moment wordt die jager **opgegeten door een grotere
+   monstervis** — die nu Roef achtervolgt. Enger, sneller, vult meer van het scherm.
+3. Dit kan nog 1× herhalen (een nóg grotere vis), zodat de druk per wereld oploopt.
+4. **Ontknoping:** bij het oppervlak hangt een **visnet**. Roef glipt er klein als
+   hij is dwars doorheen; de grote monstervis is te groot en raakt verstrikt. Roef
+   ontsnapt — klein zijn redt hem.
 
-Zie [docs/REVIEW.md](docs/REVIEW.md) voor de afweging en aanbeveling.
+Optioneel een korte, grappige knipoog ná de ontsnapping (zie
+[docs/REVIEW.md](docs/REVIEW.md) voor varianten en afweging).
 
 ## Status & roadmap (kort)
 
 Dit project staat in de **conceptfase**. De eerstvolgende mijlpaal is een
-speelbare verticale-slice (MVP). Zie de [roadmap in het GDD](docs/DESIGN.md#13-roadmap--milestones).
+speelbare verticale-slice (MVP). Zie de [roadmap in het GDD](docs/DESIGN.md#14-roadmap--milestones).
 
 ## Licentie
 

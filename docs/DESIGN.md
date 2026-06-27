@@ -14,7 +14,7 @@
 7. [Obstakels & hazards](#7-obstakels--hazards)
 8. [Power-ups & collectibles](#8-power-ups--collectibles)
 9. [Levels, werelden & progressie](#9-levels-werelden--progressie)
-10. [De twist: eindscenario's](#10-de-twist-eindscenarios)
+10. [De verhaalboog & ontknoping](#10-de-verhaalboog--ontknoping)
 11. [Art & audio](#11-art--audio)
 12. [Techniek](#12-techniek)
 13. [MVP / verticale slice](#13-mvp--verticale-slice)
@@ -28,16 +28,19 @@
 
 **Roef de Vis: To the Top** is een verticale arcade-swimmer voor mobiel. Je stuurt
 Roef, een kleine vis, omhoog door levels die meerdere schermen hoog zijn. Diep onder
-je komt een monster op — stilstaan betekent gepakt worden. Onderweg ontwijk je
-rotsen, kwallen, stroming en visnetten. Bereik **the top** (het wateroppervlak) en
-geniet van een onverwachte, grappige twist.
+je jaagt een monstervis — stilstaan betekent gepakt worden. Onderweg verandert de
+jager: een kleine monstervis wordt opgegeten door een grotere (en die eventueel weer
+door een nóg grotere), zodat de druk oploopt. Onderweg ontwijk je rotsen, kwallen,
+stroming en visnetten. Bij het oppervlak draait het om: Roef glipt door het net, de
+grote vis raakt verstrikt — klein zijn redt hem.
 
-**Fantasie:** "Zwem voor je leven naar boven en ontsnap — net op tijd."
+**Fantasie:** "Zwem voor je leven naar boven en ontsnap — net op tijd, omdat je klein
+bent."
 
 **Toon:** licht, kleurrijk, cartoonesk en grappig. Spanning met een knipoog.
 
-**Onderscheidend:** persoonlijke mascotte (Roef), humoristische twist-momenten en
-strakke één-hands verticale gameplay.
+**Onderscheidend:** persoonlijke mascotte (Roef), een escalerende-jager-spanningsboog
+met een omgedraaide-voedselketen-ontknoping, en strakke één-hands verticale gameplay.
 
 ## 2. Doelgroep & platform
 
@@ -51,22 +54,25 @@ strakke één-hands verticale gameplay.
 ## 3. Core gameplay loop
 
 ```
-Start onderaan ──► Zwem omhoog ──► Ontwijk obstakels & blijf monster voor
+Start onderaan ──► Zwem omhoog ──► Ontwijk obstakels & blijf de jager voor
       ▲                                          │
       │                                          ▼
    Opnieuw  ◄──── Gepakt/geraakt? ──nee──► Bereik oppervlak (the top)
    (snel)                                         │
                                                   ▼
-                                          Twist-einde + score/voortgang
+                                   Escalatie-beat of net-ontknoping + score
 ```
 
 **Per run:**
 1. Roef start onderin het level.
 2. De speler beweegt Roef links/rechts en stuwt hem omhoog.
-3. Het beeld scrollt mee omhoog; het monster nadert van onderaf.
+3. Het beeld scrollt mee omhoog; de jager (monstervis) nadert van onderaf.
 4. Obstakels en hazards moeten ontweken worden; collectibles geven bonus.
-5. Bereikt de speler het oppervlak → level gehaald → twist + score → volgend level.
-6. Geraakt door monster (fail) of health op → korte fail-animatie → snel opnieuw.
+5. Op gezette momenten: **escalatie-beat** — de jager wordt opgegeten door een
+   grotere monstervis die de achtervolging overneemt.
+6. Bij het oppervlak van de laatste wereld: **net-ontknoping** — Roef glipt erdoor,
+   de grote vis raakt verstrikt → level/spel gehaald → score → vervolg.
+7. Geraakt door de jager (fail) of health op → korte fail-animatie → snel opnieuw.
 
 **Beloningsritme:** elke ~10–15s een spanningsmoment (nauwe doorgang, kwallenzwerm),
 afgewisseld met een korte "ademruimte". Vlak onder het oppervlak een **"bijna!"-zone**
@@ -81,7 +87,7 @@ met oplopende muziek.
   zachte "bots terug").
 - **HUD (minimaal):**
   - Hoogte-/voortgangsbalk aan de zijkant (hoe ver tot het oppervlak).
-  - Monster-nabijheid-indicator (onderaan, kleurt rood als het dichtbij is).
+  - Jager-nabijheid-indicator (onderaan, kleurt rood als de monstervis dichtbij is).
   - Health/lucht-indicator (zie §8).
   - Score / verzamelde bellen.
 - **Leesbaarheid:** UI uit de duim-zones houden; gameplay nooit onder de vingers.
@@ -111,16 +117,30 @@ omhoog-zwemmen op auto te zetten.
   bang, opgelucht). Reageert op gevaar (bange blik als monster dichtbij is).
 - Mogelijke skins/varianten als latere uitbreiding.
 
-### Het Monster (antagonist)
-- Komt van onderaf op; vult de onderkant van het scherm met dreiging (silhouet,
-  ogen, hap-animatie).
-- **Snelheid schaalt** met levelvoortgang en moeilijkheid, maar altijd "fair":
-  de speler krijgt visuele/audio-waarschuwing voordat het inhaalt.
-- Verschillende monstervarianten per wereld (bv. dieptevis, inktvis, haai).
+### De monstervis(sen) (escalerende antagonist)
+Het centrale idee: een **voedselketen die oploopt** — "grote vis eet kleine vis".
 
-### Bijfiguren (voor twists)
-- Spelende kinderen met schepnetje, visser/boot, meeuw, kat op de kade — afhankelijk
-  van het eindscenario (§10).
+- Roef wordt eerst achtervolgd door een **kleine monstervis** (Predator 1) die van
+  onderaf opkomt.
+- Op een dramatisch beat-moment wordt die jager **opgegeten door een grotere
+  monstervis** (Predator 2), die het stokje overneemt. De nieuwe jager is groter,
+  sneller en vult meer van het scherm → meer druk.
+- Dit kan **1× herhalen** (Predator 3, reusachtig). Aanbeveling: in totaal **2–3
+  schakels** in de keten over het hele spel/de werelden.
+- Elke jager: silhouet, ogen, hap-animatie. **Snelheid schaalt** per schakel en met
+  voortgang, maar altijd "fair": visuele/audio-waarschuwing voordat hij inhaalt.
+
+**Het "opgegeten worden"-moment** is een korte, krachtige in-game beat (geen lange
+cutscene): de huidige jager wordt van onderaf verzwolgen; even respijt voor Roef,
+daarna zet de grotere de achtervolging in. Werkt goed als wereld-/sectie-overgang.
+
+**Ontwerp-haak — grootte als kernthema:** hoe groter de jager, hoe enger, maar ook
+hoe minder wendbaar. Dit zet de ontknoping op: bij het net is Roefs kleine formaat
+juist zijn redding (§10).
+
+### Bijfiguren
+- Visser/boot, spelende kinderen, meeuw — voor de optionele knipoog ná de
+  ontsnapping (§10).
 
 ## 7. Obstakels & hazards
 
@@ -131,7 +151,7 @@ Obstakels maken het moeilijker om omhoog te komen. Categorieën:
 | **Rotsen / wrakdelen** | Statisch, blokkeren paden | Versperring; dwingt route te kiezen |
 | **Kwallen** | Zweven, soms bewegend | Treffer = schade/verdoving (kort niet sturen) |
 | **Stroming** | Verticale/horizontale stromingsvlakken | Duwt Roef weg; kan helpen of hinderen |
-| **Visnetten** | Statisch of zakkend van boven | Verstrikt Roef kort (vertraagt → monster nadert) |
+| **Visnetten** | Statisch of zakkend van boven | Roef glipt er (klein als hij is) doorheen, maar het vertraagt hem licht → jager nadert. **Zet de ontknoping op** (§10): de grote monstervis past er níét door |
 | **Luchtbellen-gat / draaikolk** | Trekt Roef richting gevaar | Positioneringsuitdaging |
 | **Bewegende obstakels** | Heen-en-weer (vissen, boten, ankers) | Timing-uitdaging |
 | **Smalle doorgangen** | Nauwe spleten | Precisie vereist; spanningspiek |
@@ -139,7 +159,11 @@ Obstakels maken het moeilijker om omhoog te komen. Categorieën:
 **Ontwerpprincipes:**
 - Introduceer elk type apart en veilig voordat je ze combineert.
 - Geen "onmogelijke" of onvermijdbare situaties; altijd een leesbare route.
-- Hazards leveren spanning, het monster levert tijdsdruk — combineer doseerbaar.
+- Hazards leveren spanning, de jager levert tijdsdruk — combineer doseerbaar.
+- **Net = terugkerend kernidee:** introduceer netten vroeg als obstakel waar Roef
+  net dóór kan, zodat de speler de regel "ik pas erdoor, mijn achtervolger niet"
+  leert vóór de grote ontknoping. Optionele tactiek: een jager kwijtraken door door
+  een net te glippen waar hij niet volgt.
 
 ## 8. Power-ups & collectibles
 
@@ -158,7 +182,10 @@ Power-ups spaarzaam plaatsen zodat ze speciaal voelen en keuzes creëren.
   einddoel: het oppervlak. Elk level is **meerdere schermen hoog** (richtlijn:
   3–6 schermhoogtes voor de MVP, oplopend).
 - **Werelden/thema's:** bv. *Ondiep rif* → *Diepzee* → *Haven/kade*. Elke wereld een
-  eigen palet, obstakelset, monstervariant en wereld-einde-twist.
+  eigen palet en obstakelset. **De escalerende jager loopt door de werelden heen:**
+  een nieuwe, grotere monstervis verschijnt (door het "opgegeten worden"-moment, §6)
+  als overgang tussen werelden, zodat de keten 2–3 schakels telt richting de
+  net-ontknoping in de laatste wereld.
 - **Moeilijkheidscurve:** per level meer/complexere obstakels, snellere monster,
   langere afstand. Nieuwe mechanic introduceren → oefenen → combineren.
 - **Checkpoints:** korte levels = geen mid-level checkpoints nodig; wel een snelle
@@ -168,22 +195,43 @@ Power-ups spaarzaam plaatsen zodat ze speciaal voelen en keuzes creëren.
 - **Optionele endless-modus** (post-MVP): procedureel gegenereerde, oneindig stijgende
   duik met highscore.
 
-## 10. De twist: eindscenario's
+## 10. De verhaalboog & ontknoping
 
-Aan het oppervlak speelt een korte cutscene/animatie. We zetten verschillende
-varianten in, escalerend met voortgang (zie ook [REVIEW.md](REVIEW.md#6-eindscenarios-de-twist-opties--afweging)):
+De dramatische lijn zit in de **escalerende jager** (§6) die uitmondt in de
+**net-ontknoping**:
 
-- **A. Monster gevangen** (wereld-einde, beloning): het monster schiet door het
-  oppervlak en wordt gevangen door visser/harpoen/vogel; Roef ontsnapt. **Aanbevolen
-  als hoofd-payoff.**
-- **B. Roef in het netje** (speciale/grap-levels): Roef springt in een schepnetje van
-  kinderen — bittersweet & grappig.
-- **C. Van de regen in de drup** (normale levels): nieuwe dreiging boven water leidt
-  de volgende sectie/wereld in (cliffhanger).
-- **D. Held-redding** (verhaalmoment): Roef redt iets/iemand — warm i.p.v. grappig.
+### De escalatie (gedurende het spel)
+1. **Predator 1** — kleine monstervis achtervolgt Roef.
+2. **Predator 2** — eet Predator 1 op tijdens een in-game beat; neemt de
+   achtervolging over, groter en sneller.
+3. **(optioneel) Predator 3** — herhaalt dit nog één keer; reusachtig.
 
-**Implementatie:** twist-einde is data-gedreven per level (`endingType: A|B|C|D`),
-zodat we makkelijk kunnen variëren en testen welke het leukst is.
+Elke escalatie verhoogt de spanning en benadrukt het thema **grootte**: enger, maar
+log en onwendbaar.
+
+### De ontknoping (het net)
+In de laatste wereld, vlak onder het oppervlak, hangt een groot **visnet**:
+- Roef is **klein genoeg** om er dwars doorheen te glippen (korte "squeeze"-animatie).
+- De grote monstervis is **te groot**, knalt erin en **raakt verstrikt**.
+- Roef breekt door het oppervlak en ontsnapt. De voedselketen wordt omgedraaid:
+  **klein zijn — eerst zijn zwakte — is uiteindelijk zijn redding.**
+
+Dit is de centrale, bevredigende payoff van het spel. De speler heeft de regel "ik
+pas door netten, mijn jager niet" eerder geleerd (§7), waardoor de ontknoping logisch
+en triomfantelijk voelt.
+
+### Optionele knipoog ná de ontsnapping
+Direct na het ontsnappen kan een korte, grappige beat volgen voor karakter/humor.
+Varianten (zie afweging in [REVIEW.md §6](REVIEW.md)):
+- **Verbaasde vissers** die de reusachtige verstrikte vis ophalen terwijl Roef
+  vrolijk wegzwemt.
+- **Spelende kinderen** aan de kade die Roef bijna in een schepnetje vangen — maar
+  net mis.
+- **Cliffhanger:** een meeuw/nieuwe dreiging boven water als hint naar een vervolg.
+
+**Implementatie:** de jager-keten en het net-einde zijn data-gedreven per
+wereld/level (bv. `predatorTier`, `ending: { net: true, gag: "fishermen|kids|none" }`),
+zodat we de escalatie en de knipoog makkelijk kunnen tunen en testen.
 
 ## 11. Art & audio
 
@@ -227,10 +275,13 @@ Doel: zo snel mogelijk valideren of de kern **fun** is.
 **In scope (MVP):**
 - 1 wereld, 1–2 ontworpen levels (elk 3–4 schermen hoog).
 - Roef met touch-besturing + actief omhoog zwemmen.
-- Monster-chase van onderaf met fair "inhaal"-waarschuwing.
+- Jager-chase van onderaf met fair "inhaal"-waarschuwing.
+- **Eén escalatie**: kleine monstervis wordt opgegeten door een grotere (het
+  "opgegeten worden"-beat). Volledige keten (3 schakels) is post-MVP.
 - 2–3 obstakeltypes (rots, kwal, net) + luchtbellen (collectible).
-- 1 twist-einde geïmplementeerd (Optie A — monster gevangen).
-- Basis-HUD (voortgang, monster-nabijheid), fail & retry, simpele score.
+- **Net-ontknoping geïmplementeerd:** Roef glipt erdoor, grote vis raakt verstrikt,
+  Roef breekt door het oppervlak. Knipoog-gag mag placeholder/uit zijn.
+- Basis-HUD (voortgang, jager-nabijheid), fail & retry, simpele score.
 - Placeholder-art en -audio is prima.
 
 **Buiten scope (later):** meerdere werelden, alle power-ups, skins, endless-modus,
@@ -262,6 +313,10 @@ pay-to-win; difficulty moet eerlijk blijven.
    (zuurstof)? Risico: te veel druk. Voorstel: MVP zonder, later testen.
 2. **Besturing definitief:** touch-drag + actief zwemmen bevestigen via prototype.
 3. **Levelhoogte:** hoeveel schermen voelt goed (spanning vs. frustratie)? Tunen in M2.
-4. **Faal-model:** monster = instant fail; obstakels = health/levens? Bevestigen.
-5. **Twist-frequentie:** hoe vaak welke twist, zodat humor vers blijft (zie §10).
-6. **Endless-modus:** wel/niet, en wanneer (post-MVP).
+4. **Faal-model:** jager = instant fail; obstakels = health/levens? Bevestigen.
+5. **Aantal schakels in de keten:** 2 of 3 monstervissen (zie §6)? Voorstel: 3 over
+   het hele spel, 1 escalatie in de MVP.
+6. **Net als tactiek:** maken we het kwijtraken van je jager via een net een echte
+   speelbare mechanic, of houden we het net puur voor de ontknoping?
+7. **Knipoog na ontsnapping:** welke gag (vissers/kinderen/cliffhanger) en hoe vaak.
+8. **Endless-modus:** wel/niet, en wanneer (post-MVP).
