@@ -52,8 +52,11 @@ de grote monstervis tegenhoudt — klein zijn redt hem.
 4. **Faal-conditie:** wat doet de jager precies — inhalen = dood, of meerdere
    levens/treffers? → Aanbeveling: jager = instant fail bij contact, obstakels =
    levens/health.
-5. **Aantal schakels in de keten:** 2 of 3 monstervissen? → Aanbeveling: **3** over
-   het hele spel, **1 escalatie** in de MVP.
+5. **Aantal schakels in de keten:** → **Besloten: 3 monstervissen** over het hele
+   spel, **1 escalatie** in de MVP.
+6. **Net als tactiek (afschudden):** → **Besloten: ja** — afschudden via een net laat
+   een nieuwe, grotere jager opzetten.
+7. **Knipoog na ontsnapping:** → **Besloten: cliffhanger.**
 
 ## 5. Aanbevelingen (kort)
 
@@ -70,13 +73,15 @@ de grote monstervis tegenhoudt — klein zijn redt hem.
 ## 6. De verhaalboog: escalerende jager → het net (gekozen richting)
 
 Dit is de **handtekening** van het spel en vervangt de losse "twist-opties" uit de
-eerste opzet. De boog:
+eerste opzet. De boog (**vastgelegd**):
 
-1. **Kleine monstervis** achtervolgt Roef.
-2. Wordt **opgegeten door een grotere monstervis**, die de jacht overneemt (enger,
-   sneller). Kan nog 1× herhalen.
+1. **Kleine monstervis** achtervolgt Roef (schakel 1 van **3**).
+2. De jager schuift een schakel op — via **twee triggers**: (a) opgegeten worden door
+   een grotere monstervis, óf (b) **afgeschud worden** doordat Roef door een net glipt
+   waar de grote vis niet volgt, waarna een nieuwe, grotere jager opzet.
 3. **Ontknoping bij het net:** Roef is klein genoeg om er dwars doorheen te glippen;
-   de grote monstervis is te groot en raakt verstrikt. Roef ontsnapt.
+   de grote (3e) monstervis is te groot en raakt verstrikt. Roef ontsnapt.
+4. **Cliffhanger:** boven water doemt meteen een nieuwe dreiging op — "wordt vervolgd".
 
 **Waarom dit sterk is:**
 - **Eén heldere, opbouwende spanningslijn** i.p.v. losse eindjes — makkelijker te
@@ -84,29 +89,31 @@ eerste opzet. De boog:
 - **Thematische payoff:** de voedselketen wordt omgedraaid; Roefs zwakte (klein) wordt
   zijn kracht. Zeer bevredigend en "fair" (de speler heeft de net-regel eerder geleerd).
 - **Natuurlijke difficulty-ramp:** elke grotere jager = meer druk, zonder uitleg.
-- **Reuse van bestaande elementen:** netten zijn al een obstakel; ze worden nu ook de
-  climax.
+- **Speler-agency:** het afschudden via netten geeft de speler grip op de escalatie en
+  koppelt de net-mechanic direct aan de verhaalboog.
+- **Reuse van bestaande elementen:** netten zijn al een obstakel; ze worden nu ook
+  tactiek én climax.
 
 **Aandachtspunten:**
 - Maak het "opgegeten worden"-moment kort en leesbaar (geen lange onderbreking).
 - Geef de speler vlak voor het net een hint/leermoment ("ik pas er net door").
 - Houd elke escalatie eerlijk — waarschuwing voordat de nieuwe, snellere jager inhaalt.
+- Zorg dat afschudden niet als "ontsnapt = klaar" voelt: maak de komst van de nieuwe,
+  grotere jager duidelijk en spannend.
 
-### De knipoog ná de ontsnapping — opties
-Direct na de ontsnapping kan een korte komische beat het karakter versterken:
+### De knipoog ná de ontsnapping — cliffhanger (gekozen)
+Direct na de ontsnapping volgt een **cliffhanger**: boven water doemt meteen een nieuwe
+dreiging op (meeuw die neerduikt, vissersboot, kat op de kade). Beeld bevriest/fade op
+het spannende moment → "wordt vervolgd". Motiveert doorspelen en zet een vervolg op
+zonder de overwinning af te pakken.
 
-- **A. Verbaasde vissers** halen de reusachtige verstrikte vis op terwijl Roef
-  wegzwemt. *(Aanbevolen — versterkt de "klein wint"-payoff.)*
-- **B. Kinderen met schepnetje** aan de kade die Roef net mís vangen — spannend/grappig.
-- **C. Cliffhanger:** een meeuw/nieuwe dreiging als hint naar een vervolg.
-- **Geen gag:** rustig, triomfantelijk einde.
-
-Aanbeveling: **A** als hoofd-knipoog; **C** spaarzaam tussen werelden voor "nog één".
+> Niet gekozen, bewaard als variatie: verbaasde vissers die de verstrikte reuzenvis
+> ophalen; kinderen met een schepnetje die Roef net mís vangen.
 
 ## 7. Voorgestelde volgende stappen
 
-1. Akkoord op de kernbeslissingen (§4) en op het aantal schakels in de keten + de
-   knipoog (§6).
+1. Akkoord op de resterende kernbeslissingen (§4.1–4.4); de verhaalboog, het aantal
+   schakels (3), de net-tactiek en de cliffhanger zijn vastgelegd (§4.5–4.7, §6).
 2. Verticale slice bouwen volgens GDD §13 (MVP-scope): inclusief één escalatie en de
    net-ontknoping.
 3. Speeltest → afstemmen van jager-snelheid, escalatie-timing, levelhoogte en besturing.

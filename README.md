@@ -20,10 +20,11 @@ Roef is een kleine vis op de bodem van de zee/het meer. Diep onder hem jaagt een
 hoge levels heen zwemmen, langs rotsen, kwallen, stroming en visnetten, totdat hij
 het oppervlak doorbreekt.
 
-Het spannende: de jager verandert. Onderweg wordt de monstervis die Roef
-achtervolgt **opgegeten door een nóg grotere monstervis** — en die daarna eventueel
-weer door een nog grotere. De voedselketen ("grote vis eet kleine vis") loopt op en
-de druk wordt steeds groter.
+Het spannende: de jager verandert. De voedselketen ("grote vis eet kleine vis") kent
+**3 monstervissen** die oplopen in grootte. De jager schuift een schakel op wanneer
+hij wordt **opgegeten door een grotere monstervis**, óf wanneer Roef hem **afschudt
+door door een net te glippen** — waarna een nieuwe, grotere vis opduikt. De druk
+wordt steeds groter.
 
 De ontknoping draait het om: bij het oppervlak hangt een **visnet**. Roef is klein
 genoeg om er dwars doorheen te zwemmen — de grote monstervis niet, en raakt
@@ -55,16 +56,15 @@ Aan het oppervlak gebeurt er telkens iets onverwachts en grappigs (zie
 
 De spanning bouwt op via de **voedselketen**:
 
-1. Roef wordt achtervolgd door een **kleine monstervis**.
-2. Op een dramatisch moment wordt die jager **opgegeten door een grotere
-   monstervis** — die nu Roef achtervolgt. Enger, sneller, vult meer van het scherm.
-3. Dit kan nog 1× herhalen (een nóg grotere vis), zodat de druk per wereld oploopt.
+1. Roef wordt achtervolgd door een **kleine monstervis** (schakel 1 van 3).
+2. De jager schuift op naar een **grotere monstervis** — door opgegeten te worden óf
+   doordat Roef hem via een net afschudt. Enger, sneller, vult meer van het scherm.
+3. Dit gebeurt tot de **3e, reusachtige** monstervis, zodat de druk oploopt.
 4. **Ontknoping:** bij het oppervlak hangt een **visnet**. Roef glipt er klein als
    hij is dwars doorheen; de grote monstervis is te groot en raakt verstrikt. Roef
    ontsnapt — klein zijn redt hem.
-
-Optioneel een korte, grappige knipoog ná de ontsnapping (zie
-[docs/REVIEW.md](docs/REVIEW.md) voor varianten en afweging).
+5. **Cliffhanger:** net boven water doemt al een nieuwe dreiging op (meeuw, boot…) —
+   "wordt vervolgd".
 
 ## Status & roadmap (kort)
 

@@ -119,20 +119,29 @@ omhoog-zwemmen op auto te zetten.
 
 ### De monstervis(sen) (escalerende antagonist)
 Het centrale idee: een **voedselketen die oploopt** — "grote vis eet kleine vis".
+Er zijn **3 schakels** (3 monstervissen) over het hele spel:
 
-- Roef wordt eerst achtervolgd door een **kleine monstervis** (Predator 1) die van
-  onderaf opkomt.
-- Op een dramatisch beat-moment wordt die jager **opgegeten door een grotere
-  monstervis** (Predator 2), die het stokje overneemt. De nieuwe jager is groter,
-  sneller en vult meer van het scherm → meer druk.
-- Dit kan **1× herhalen** (Predator 3, reusachtig). Aanbeveling: in totaal **2–3
-  schakels** in de keten over het hele spel/de werelden.
-- Elke jager: silhouet, ogen, hap-animatie. **Snelheid schaalt** per schakel en met
-  voortgang, maar altijd "fair": visuele/audio-waarschuwing voordat hij inhaalt.
+- **Predator 1** — kleine monstervis, achtervolgt Roef van onderaf.
+- **Predator 2** — groter, sneller, vult meer van het scherm.
+- **Predator 3** — reusachtig; de uiteindelijke jager die bij de net-ontknoping vast
+  komt te zitten.
 
-**Het "opgegeten worden"-moment** is een korte, krachtige in-game beat (geen lange
-cutscene): de huidige jager wordt van onderaf verzwolgen; even respijt voor Roef,
-daarna zet de grotere de achtervolging in. Werkt goed als wereld-/sectie-overgang.
+Elke jager: silhouet, ogen, hap-animatie. **Snelheid schaalt** per schakel en met
+voortgang, maar altijd "fair": visuele/audio-waarschuwing voordat hij inhaalt.
+
+**De keten loopt op via twee triggers:**
+
+1. **Opgegeten worden (scripted):** op een dramatisch beat-moment wordt de huidige
+   jager van onderaf verzwolgen door de volgende, grotere monstervis. Even respijt voor
+   Roef, daarna zet de grotere de achtervolging in. Korte, krachtige in-game beat (geen
+   lange cutscene); werkt goed als wereld-/sectie-overgang.
+2. **Afgeschud worden (speler-gedreven):** als Roef zijn jager kwijtraakt door door een
+   net te glippen waar de grote vis niet volgt (zie §7), verdwijnt die jager —
+   en **komt er even later een nieuwe (grotere) monstervis** opzetten. Zo wordt de
+   escalatie deels door de speler veroorzaakt en voelt het kwijtraken nooit als
+   "het is voorbij".
+
+Beide triggers schuiven de keten één schakel op (Predator 1 → 2 → 3).
 
 **Ontwerp-haak — grootte als kernthema:** hoe groter de jager, hoe enger, maar ook
 hoe minder wendbaar. Dit zet de ontknoping op: bij het net is Roefs kleine formaat
@@ -160,10 +169,13 @@ Obstakels maken het moeilijker om omhoog te komen. Categorieën:
 - Introduceer elk type apart en veilig voordat je ze combineert.
 - Geen "onmogelijke" of onvermijdbare situaties; altijd een leesbare route.
 - Hazards leveren spanning, de jager levert tijdsdruk — combineer doseerbaar.
-- **Net = terugkerend kernidee:** introduceer netten vroeg als obstakel waar Roef
+- **Net = terugkerende kernmechanic:** introduceer netten vroeg als obstakel waar Roef
   net dóór kan, zodat de speler de regel "ik pas erdoor, mijn achtervolger niet"
-  leert vóór de grote ontknoping. Optionele tactiek: een jager kwijtraken door door
-  een net te glippen waar hij niet volgt.
+  leert vóór de grote ontknoping.
+- **Net als tactiek (bevestigd):** Roef kan zijn huidige jager **afschudden** door
+  door een net te glippen waar de grote vis niet volgt. De jager verdwijnt en even
+  later komt er een **nieuwe, grotere monstervis** opzetten (escalatie, zie §6). Dit
+  geeft de speler agency en koppelt de net-mechanic aan de verhaalboog.
 
 ## 8. Power-ups & collectibles
 
@@ -201,10 +213,11 @@ De dramatische lijn zit in de **escalerende jager** (§6) die uitmondt in de
 **net-ontknoping**:
 
 ### De escalatie (gedurende het spel)
+**3 schakels**, die oplopen via twee triggers (zie §6): de jager wordt opgegeten door
+een grotere, óf Roef schudt zijn jager af via een net waarna een grotere opzet.
 1. **Predator 1** — kleine monstervis achtervolgt Roef.
-2. **Predator 2** — eet Predator 1 op tijdens een in-game beat; neemt de
-   achtervolging over, groter en sneller.
-3. **(optioneel) Predator 3** — herhaalt dit nog één keer; reusachtig.
+2. **Predator 2** — neemt de achtervolging over, groter en sneller.
+3. **Predator 3** — reusachtig; de uiteindelijke jager.
 
 Elke escalatie verhoogt de spanning en benadrukt het thema **grootte**: enger, maar
 log en onwendbaar.
@@ -220,18 +233,19 @@ Dit is de centrale, bevredigende payoff van het spel. De speler heeft de regel "
 pas door netten, mijn jager niet" eerder geleerd (§7), waardoor de ontknoping logisch
 en triomfantelijk voelt.
 
-### Optionele knipoog ná de ontsnapping
-Direct na het ontsnappen kan een korte, grappige beat volgen voor karakter/humor.
-Varianten (zie afweging in [REVIEW.md §6](REVIEW.md)):
-- **Verbaasde vissers** die de reusachtige verstrikte vis ophalen terwijl Roef
-  vrolijk wegzwemt.
-- **Spelende kinderen** aan de kade die Roef bijna in een schepnetje vangen — maar
-  net mis.
-- **Cliffhanger:** een meeuw/nieuwe dreiging boven water als hint naar een vervolg.
+### De knipoog ná de ontsnapping — cliffhanger (gekozen)
+Direct na het ontsnappen volgt een korte **cliffhanger**: Roef breekt opgelucht door
+het oppervlak en boven water doemt meteen een **nieuwe dreiging** op (bv. een meeuw die
+neerduikt, een vissersboot, een kat op de kade). Beeld bevriest of fade-out op het
+spannende moment → "wordt vervolgd". Dit motiveert doorspelen en zet een vervolg/wereld
+op zonder de overwinning af te pakken.
+
+> De alternatieven (verbaasde vissers; kinderen met schepnetje) zijn niet gekozen, maar
+> bewaard als mogelijke variatie/seizoensmoment — zie [REVIEW.md §6](REVIEW.md).
 
 **Implementatie:** de jager-keten en het net-einde zijn data-gedreven per
-wereld/level (bv. `predatorTier`, `ending: { net: true, gag: "fishermen|kids|none" }`),
-zodat we de escalatie en de knipoog makkelijk kunnen tunen en testen.
+wereld/level (bv. `predatorTier: 1|2|3`, `ending: { net: true, gag: "cliffhanger" }`),
+zodat we de escalatie en de cliffhanger makkelijk kunnen tunen en testen.
 
 ## 11. Art & audio
 
@@ -258,10 +272,12 @@ zodat we de escalatie en de knipoog makkelijk kunnen tunen en testen.
 - **Unity** — meest features/asset-store, maar zwaarder en licentie-overwegingen.
 
 **Architectuur (globaal):**
-- Scene per level; level-data (obstakels, hoogte, `endingType`) als data/resource zodat
-  designers levels kunnen tunen zonder code.
-- Componenten: `Player(Roef)`, `Monster`, `Obstacle`-typen, `PowerUp`, `Camera`,
-  `LevelController`, `HUD`, `EndingController`.
+- Scene per level; level-data (obstakels, hoogte, `predatorTier`, `ending`) als
+  data/resource zodat designers levels kunnen tunen zonder code.
+- Componenten: `Player(Roef)`, `Predator` (3 tiers, gedeelde chase-logica), `Net`
+  (obstakel + afschud-trigger), `Obstacle`-typen, `PowerUp`, `Camera`,
+  `LevelController`, `PredatorDirector` (beheert escalatie: opgegeten/afgeschud →
+  volgende tier), `HUD`, `EndingController`.
 - Deterministische, frame-onafhankelijke physics voor eerlijke difficulty.
 - Schaalbare resolutie/aspect-ratio-handling voor volle-breedte op alle toestellen.
 
@@ -309,14 +325,18 @@ pay-to-win; difficulty moet eerlijk blijven.
 
 ## 16. Open vragen
 
-1. **Lucht/zuurstofmeter:** willen we naast het monster een tweede tijdsdruk
+1. **Lucht/zuurstofmeter:** willen we naast de jager een tweede tijdsdruk
    (zuurstof)? Risico: te veel druk. Voorstel: MVP zonder, later testen.
 2. **Besturing definitief:** touch-drag + actief zwemmen bevestigen via prototype.
 3. **Levelhoogte:** hoeveel schermen voelt goed (spanning vs. frustratie)? Tunen in M2.
 4. **Faal-model:** jager = instant fail; obstakels = health/levens? Bevestigen.
-5. **Aantal schakels in de keten:** 2 of 3 monstervissen (zie §6)? Voorstel: 3 over
-   het hele spel, 1 escalatie in de MVP.
-6. **Net als tactiek:** maken we het kwijtraken van je jager via een net een echte
-   speelbare mechanic, of houden we het net puur voor de ontknoping?
-7. **Knipoog na ontsnapping:** welke gag (vissers/kinderen/cliffhanger) en hoe vaak.
-8. **Endless-modus:** wel/niet, en wanneer (post-MVP).
+
+### Vastgelegde beslissingen ✅
+- **Aantal schakels:** **3 monstervissen** over het hele spel (1 escalatie in de MVP).
+- **Net als tactiek:** **ja** — Roef kan zijn jager afschudden via een net, waarna een
+  nieuwe, grotere monstervis verschijnt (§6, §7).
+- **Knipoog na ontsnapping:** **cliffhanger** — nieuwe dreiging boven water als hint
+  naar een vervolg (§10).
+
+### Nog open
+5. **Endless-modus:** wel/niet, en wanneer (post-MVP).
