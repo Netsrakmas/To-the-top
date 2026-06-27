@@ -44,10 +44,10 @@ window.onerror = function (msg, src, line, col) {
   const CFG = {
     levelsTall: 5,            // hoogte van het level in schermen
     maxCanvasW: 480,          // op desktop centreren; op telefoon = volle breedte
-    dragSens: 0.9,            // veegsnelheid -> zwemsnelheid (flick)
-    maxSpeed: 560,            // max zwemsnelheid (px/s)
-    friction: 0.90,          // demping per 1/60s -> rechte lijn die uitdooft
-    gravity: 170,            // px/s^2 zachte zwaartekracht (zakken als je niets doet)
+    impulse: 2.2,            // veeg = duwtje: veeg-pixels -> extra snelheid (geen vinger-volgen)
+    maxSpeed: 600,            // max zwemsnelheid (px/s)
+    friction: 0.94,          // demping per 1/60s -> glijdt door en dooft uit
+    gravity: 160,            // px/s^2 zachte zwaartekracht (zakken als je niets doet)
     netSlow: 0.45,            // snelheidsfactor terwijl je door een net glipt
     playerR: 16,
     hearts: 3,
@@ -188,20 +188,20 @@ window.onerror = function (msg, src, line, col) {
 
     // --- speler ---
     if (state === "play") {
-      // Veeg = flick: zet snelheid in de veegrichting; Roef zwemt in een rechte lijn door.
-      if (ptr.dx !== 0 || ptr.dy !== 0) {
-        player.vx = (ptr.dx / dt) * CFG.dragSens;
-        player.vy = (ptr.dy / dt) * CFG.dragSens;
-        ptr.dx = 0; ptr.dy = 0;
-      }
+      // Veeg = duwtje: voeg snelheid toe in de veegrichting; Roef glijdt zelf door.
+      player.vx += ptr.dx * CFG.impulse;
+      player.vy += ptr.dy * CFG.impulse;
+      ptr.dx = 0; ptr.dy = 0;
       player.vy += CFG.gravity * dt;                    // zachte zwaartekracht
       const sp = Math.hypot(player.vx, player.vy);      // snelheid begrenzen
       if (sp > CFG.maxSpeed) { const k = CFG.maxSpeed / sp; player.vx *= k; player.vy *= k; }
       const slow = player.inNet ? CFG.netSlow : 1;
       player.x += player.vx * dt * slow;
       player.y += player.vy * dt * slow;
-      const fr = Math.pow(CFG.friction, dt * 60);        // demping (rechte lijn dooft uit)
+      const fr = Math.pow(CFG.friction, dt * 60);        // demping (glijdt uit)
       player.vx *= fr; player.vy *= fr;
+      // niet tegen de randen blijven duwen
+      if (player.x <= player.r || player.x >= VW - player.r) player.vx = 0;
       player.x = clamp(player.x, player.r, VW - player.r);
       player.y = clamp(player.y, 40, world.h - player.r);
       if (player.invuln > 0) player.invuln -= dt;
