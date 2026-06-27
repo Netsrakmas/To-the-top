@@ -47,6 +47,25 @@ Meerdere werelden, power-ups (boost/schild), skins, audio, het scripted "opgeget
 worden"-moment als alternatieve escalatie-trigger, en een endless-modus. Zie het GDD
 voor de volledige scope.
 
+## Visuele stijl (art-direction pass)
+
+Na een multi-agent visual review zijn de graphics opgewaardeerd, met behoud van
+leesbaarheid en 60fps:
+
+- **Roef = de warme held:** warme gloed-halo, radiaal-geschaduwd lijf, contour,
+  drop-shadow en idle-dobber. Als enige warm object springt hij eruit tegen het
+  koele water.
+- **Monstervissen:** dreigend silhouet met rim-light, pulserend gloeiende ogen en
+  spleet-pupillen; enger/feller per tier; gevangen vissen spartelen in het net.
+- **Sfeer:** meerpunts diepte-gradient (turquoise → afgrond), geanimeerde godrays,
+  oppervlak-shimmer + caustics, zwevend plankton, parallax wier-silhouetten en een
+  atmosferische diepte-waas.
+- **Objecten:** onregelmatige, getextureerde rotsen met algen; koel-gekleurde,
+  pulserende kwallen; stijgende luchtbellen; netten met doorhang + gloed (goud voor
+  het eind-net).
+- **Game-feel/juice:** screen shake bij treffer/net/verlies, hit-flash en
+  kwetsbaar-vignet — HUD blijft altijd stil en leesbaar.
+
 ## Techniek
 
 Vanilla JavaScript + Canvas 2D, geen dependencies. Responsive/portrait, high-DPI,

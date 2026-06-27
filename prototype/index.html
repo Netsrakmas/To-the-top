@@ -114,8 +114,10 @@ window.onerror = function (msg, src, line, col) {
   // ---------------------------------------------------------------------------
   let state = "title";   // title | play | winning | win | lose
   let world = { h: VH * CFG.levelsTall }, camY = 0;   // defaults zodat de titel-achtergrond werkt
-  let player, predator, caught, nets, obstacles, bubbles;
+  let player, predator, caught, nets, obstacles, bubbles, plankton, bgWeeds;
   let score, hearts, time = 0, banner, bannerT, winT;
+  let depthTop = 0;          // 0 oppervlak .. 1 diep (gedeeld door achtergrond/sfeer)
+  let shake = 0, hitFlash = 0;
 
   const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -146,25 +148,47 @@ window.onerror = function (msg, src, line, col) {
       const y = rnd(160, worldH - 220);
       if (nearNet(y)) continue;
       const type = Math.random() < 0.55 ? "rock" : "jelly";
-      const cols = ["#d98cff", "#a78cff", "#8cc6ff", "#ff9ce0"];
-      obstacles.push({
-        type, x: rnd(30, VW - 30), y,
-        r: type === "rock" ? rnd(20, 40) : rnd(17, 26),
+      const cols = ["#b06fe0", "#7d8cff", "#5fd8e0", "#9a6ff0"];   // koele familie; alleen Roef is warm
+      const r = type === "rock" ? rnd(20, 40) : rnd(17, 26);
+      const o = {
+        type, x: rnd(30, VW - 30), y, r,
         ph: rnd(0, 6.28),
-        // kwal-eigenschappen: kleur, pulssnelheid, zwemrichting + snelheid
+        // kwal: kleur, pulssnelheid, zwemrichting + snelheid
         col: cols[(Math.random() * cols.length) | 0],
         pulse: rnd(2.4, 3.8),
         dir: (Math.random() < 0.5 ? 0 : Math.PI) + rnd(-0.45, 0.45),
         speed: rnd(30, 65),
-      });
+      };
+      if (type === "rock") {
+        // onregelmatig, stabiel silhouet (eenmalig) + tint + vlekjes + algen
+        o.shape = [];
+        for (let k = 0; k < 11; k++) o.shape.push(0.78 + rnd(0, 0.34));
+        o.tint = rnd(0, 1);
+        o.spots = [];
+        for (let k = 0; k < 4; k++) o.spots.push({ a: rnd(0, 6.28), d: rnd(0.2, 0.7), s: rnd(0.12, 0.26) });
+        o.weed = Math.random() < 0.55;
+      }
+      obstacles.push(o);
     }
 
-    // luchtbellen (score)
+    // luchtbellen (stijgen + zigzag); score-bellen verdwijnen, rest wrapt onderaan
     bubbles = [];
     for (let i = 0; i < 60; i++) {
-      bubbles.push({ x: rnd(20, VW - 20), y: rnd(120, worldH - 120), r: rnd(5, 9), got: false });
+      bubbles.push({ x: rnd(20, VW - 20), y: rnd(120, worldH - 120), r: rnd(5, 9), got: false,
+        vy: rnd(18, 40), ph: rnd(0, 6.28), wspd: rnd(1.5, 3) });
     }
 
+    // zwevend plankton (scherm-ruimte, parallax + drift) en verre wier-silhouetten (parallax)
+    plankton = [];
+    for (let i = 0; i < 70; i++) {
+      plankton.push({ x: rnd(0, VW), y: rnd(0, VH), r: rnd(0.6, 2.2), spd: rnd(4, 14), amp: rnd(4, 14), ph: rnd(0, 6.28) });
+    }
+    bgWeeds = [];
+    for (let i = 0; i < 16; i++) {
+      bgWeeds.push({ x: rnd(-10, VW + 10), y: rnd(0, worldH), h: rnd(60, 150), w: rnd(8, 18), ph: rnd(0, 6.28), edge: Math.random() < 0.5 });
+    }
+
+    shake = 0; hitFlash = 0;
     caught = [];   // monstervissen die in een net vast zitten
     predator = makePredator(0, player.y + VH * 0.85);
     camY = clamp(player.y - VH * 0.62, 0, worldH - VH);
@@ -180,8 +204,9 @@ window.onerror = function (msg, src, line, col) {
     if (player.invuln > 0) return;
     hearts--; player.invuln = CFG.invulnTime;
     player.y += knockY;                 // teruggeslagen naar beneden -> jager wint terrein
+    shake = Math.max(shake, 7); hitFlash = 1;
     flash("Au! " + hearts + " ❤ over");
-    if (hearts <= 0) state = "lose";
+    if (hearts <= 0) { state = "lose"; shake = 16; }
   }
 
   // ---------------------------------------------------------------------------
@@ -189,6 +214,11 @@ window.onerror = function (msg, src, line, col) {
   // ---------------------------------------------------------------------------
   function update(dt) {
     time += dt;
+    // fx uitdoven (ook tijdens win/lose zodat shake netjes stopt)
+    shake *= Math.pow(0.0025, dt);
+    if (shake < 0.3) shake = 0;
+    if (hitFlash > 0) hitFlash -= dt * 4;
+    if (caught) for (const c of caught) { c.wob += dt * 6; if (c.thrash > 0) c.thrash *= Math.pow(0.5, dt); }
     if (state !== "play" && state !== "winning") return;
 
     // --- speler ---
@@ -229,8 +259,9 @@ window.onerror = function (msg, src, line, col) {
       if (Math.abs(player.y - n.y) < 16) player.inNet = true;
       if (!n.passed && player.y < n.y) {
         n.passed = true;
-        // huidige jager komt vast te zitten in dit net
-        caught.push({ y: n.y, x: predator.x, vis: predator.vis, wob: 0 });
+        // huidige jager komt vast te zitten in dit net en spartelt
+        caught.push({ y: n.y, x: predator.x, vis: predator.vis, tier: predator.tier, wob: 0, thrash: 1.4 });
+        shake = Math.max(shake, 10);
         if (n.final) {
           state = "winning"; winT = 0;
           flash("De grote vis zit vast in het net!");
@@ -251,7 +282,7 @@ window.onerror = function (msg, src, line, col) {
       predator.wob += dt * 6;
       // botsing met Roef = einde
       if (Math.hypot(predator.x - player.x, predator.y - player.y) < predator.vis.size * 0.7 + player.r) {
-        state = "lose"; flash("Gepakt!");
+        state = "lose"; shake = 16; flash("Gepakt!");
       }
     }
 
@@ -277,9 +308,11 @@ window.onerror = function (msg, src, line, col) {
       }
     }
 
-    // --- bellen verzamelen ---
+    // --- bellen: stijgen + verzamelen ---
     for (const b of bubbles) {
       if (b.got) continue;
+      b.y -= b.vy * dt;                                  // stijgt
+      if (b.y < 20) { b.y = world.h - 20; b.x = rnd(20, VW - 20); }
       if (Math.hypot(b.x - player.x, b.y - player.y) < b.r + player.r + 4) { b.got = true; score++; }
     }
 
@@ -297,91 +330,180 @@ window.onerror = function (msg, src, line, col) {
   // ---------------------------------------------------------------------------
   const S = (wy) => wy - camY;   // wereld-y -> scherm-y
 
+  // diepte-palet: turquoise -> kobalt -> inktpaars -> afgrond (meerpunts-lerp)
+  const ANCHORS = [[0, [40, 150, 180]], [0.4, [16, 84, 128]], [0.72, [20, 42, 84]], [1, [4, 14, 26]]];
+  function depthColor(t) {
+    t = clamp(t, 0, 1);
+    for (let i = 1; i < ANCHORS.length; i++) {
+      if (t <= ANCHORS[i][0]) {
+        const a = ANCHORS[i - 1], b = ANCHORS[i], f = (t - a[0]) / (b[0] - a[0]);
+        return `rgb(${Math.round(a[1][0] + (b[1][0] - a[1][0]) * f)},${Math.round(a[1][1] + (b[1][1] - a[1][1]) * f)},${Math.round(a[1][2] + (b[1][2] - a[1][2]) * f)})`;
+      }
+    }
+    return "rgb(4,14,26)";
+  }
+
   function drawWater() {
-    // verloop: licht aan oppervlak (boven), donker in de diepte (onder)
-    const depthTop = camY / world.h;        // 0 oppervlak .. 1 diep
+    depthTop = camY / world.h;        // 0 oppervlak .. 1 diep (module-scope)
     const g = ctx.createLinearGradient(0, 0, 0, VH);
-    const shade = (t) => {
-      const top = [38, 132, 168], bot = [4, 18, 31];
-      const r = Math.round(top[0] + (bot[0] - top[0]) * t);
-      const gr = Math.round(top[1] + (bot[1] - top[1]) * t);
-      const b = Math.round(top[2] + (bot[2] - top[2]) * t);
-      return `rgb(${r},${gr},${b})`;
-    };
-    g.addColorStop(0, shade(clamp(depthTop, 0, 1)));
-    g.addColorStop(1, shade(clamp(depthTop + VH / world.h, 0, 1)));
+    g.addColorStop(0, depthColor(depthTop));
+    g.addColorStop(0.5, depthColor(depthTop + 0.5 * VH / world.h));
+    g.addColorStop(1, depthColor(depthTop + VH / world.h));
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, VW, VH);
 
-    // oppervlak-band als die in beeld is
+    // geanimeerde godrays (additief, wiegen, doven uit in de diepte)
+    const rayA = 0.05 * (1 - depthTop);
+    if (rayA > 0.003) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      for (let i = 0; i < 6; i++) {
+        const x = (i + 0.5) * VW / 6 + Math.sin(time * 0.25 + i * 1.7) * 26;
+        const w = VW * 0.16;
+        const rg = ctx.createLinearGradient(0, 0, 0, VH);
+        rg.addColorStop(0, `rgba(200,240,255,${rayA})`);
+        rg.addColorStop(1, "rgba(200,240,255,0)");
+        ctx.fillStyle = rg;
+        ctx.beginPath();
+        ctx.moveTo(x - w * 0.3, 0); ctx.lineTo(x + w * 0.3, 0);
+        ctx.lineTo(x + w, VH); ctx.lineTo(x - w, VH); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // oppervlak: golvende shimmer-band als het in beeld is
     const surfY = S(0);
     if (surfY > -40 && surfY < VH) {
-      ctx.fillStyle = "rgba(180,235,255,.25)";
-      ctx.fillRect(0, surfY - 6, VW, 12);
-      ctx.fillStyle = "rgba(120,200,235,.15)";
-      ctx.fillRect(0, 0, VW, Math.max(0, surfY));
-    }
-    // zachte lichtstralen
-    ctx.save();
-    ctx.globalAlpha = 0.06 * (1 - depthTop);
-    ctx.fillStyle = "#dffaff";
-    for (let i = 0; i < 5; i++) {
-      const x = ((i * 97 + 30) % VW);
+      ctx.fillStyle = "rgba(150,225,255,.22)";
       ctx.beginPath();
-      ctx.moveTo(x, 0); ctx.lineTo(x + 40, 0); ctx.lineTo(x + 110, VH); ctx.lineTo(x + 60, VH);
-      ctx.fill();
+      ctx.moveTo(0, surfY);
+      for (let x = 0; x <= VW; x += 18) ctx.lineTo(x, surfY - 6 + Math.sin(x * 0.05 + time * 2) * 4);
+      ctx.lineTo(VW, 0); ctx.lineTo(0, 0); ctx.closePath(); ctx.fill();
+    }
+    // caustics-net in de ondiepe bovenlaag
+    if (depthTop < 0.35) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const ca = 0.055 * (1 - depthTop / 0.35);
+      ctx.strokeStyle = `rgba(180,235,255,${ca})`; ctx.lineWidth = 2;
+      for (let j = 0; j < 3; j++) {
+        ctx.beginPath();
+        for (let x = 0; x <= VW; x += 12) {
+          const yy = (j + 1) * VH * 0.12 + Math.sin(x * 0.04 + time * 1.5 + j) * 10;
+          x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  // verre wier-silhouetten (trage parallax) — achtergrond-diepte
+  function drawBackdrop() {
+    ctx.fillStyle = "rgba(10,30,46,.55)";
+    for (const w of bgWeeds) {
+      const sy = w.y - camY * 0.4;
+      const yy = ((sy % world.h) + world.h) % world.h;        // wrap over de wereld
+      if (yy > VH + w.h || yy < -w.h) continue;
+      const base = yy;
+      ctx.beginPath();
+      ctx.moveTo(w.x - w.w / 2, base);
+      ctx.quadraticCurveTo(w.x - w.w / 2 + Math.sin(time + w.ph) * 14, base - w.h * 0.6, w.x + Math.sin(time * 0.8 + w.ph) * 18, base - w.h);
+      ctx.quadraticCurveTo(w.x + w.w / 2 + Math.sin(time + w.ph) * 14, base - w.h * 0.6, w.x + w.w / 2, base);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  // zwevend plankton (additieve stipjes die opstijgen en wiegen)
+  function drawPlankton() {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const a = 0.5 * (1 - depthTop);
+    ctx.fillStyle = `rgba(200,235,255,${a})`;
+    for (const p of plankton) {
+      const py = (((p.y - time * p.spd - camY * 0.2) % VH) + VH) % VH;
+      const px = p.x + Math.sin(time * 0.6 + p.ph) * p.amp;
+      ctx.beginPath(); ctx.arc(px, py, p.r, 0, 6.28); ctx.fill();
     }
     ctx.restore();
   }
 
-  function fishPath(cx, cy, size, wob, color, mouth) {
-    // simpele vis die omhoog wijst (neus boven, staart onder)
+  // atmosferische diepte-waas over de achtergrond/midground
+  function drawFog() {
+    ctx.fillStyle = `rgba(10,40,60,${(0.10 + 0.35 * depthTop).toFixed(3)})`;
+    ctx.fillRect(0, 0, VW, VH);
+  }
+
+  // monstervis (predator + gevangen): dreigend silhouet, rim-light, gloeiende ogen
+  function predatorPath(cx, cy, s, wob, tier, thrash) {
+    thrash = thrash || 0;
+    const t = Math.min(tier || 0, 2);
+    const bodies = [["#3e5a72", "#1f2c3c"], ["#5a3a72", "#1f1838"], ["#5a2a46", "#181222"]];
+    const eyes = [["#ffe066", "#ffaa22"], ["#ffcc44", "#ff6622"], ["#ffdd55", "#ff2a16"]];
+    const [rim, core] = bodies[t];
     ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(Math.sin(wob) * 0.08);
+    ctx.translate(cx + (thrash ? Math.sin(wob * 9) * s * 0.12 * thrash : 0), cy);
+    ctx.rotate(Math.sin(wob * 2.5) * (0.08 + thrash * 0.5));
     // staart
-    ctx.fillStyle = color;
+    const tw = Math.sin(wob * 3) * s * (0.25 + thrash * 0.5);
+    ctx.fillStyle = core;
     ctx.beginPath();
-    ctx.moveTo(0, size * 0.7);
-    ctx.lineTo(-size * 0.55, size * 1.15);
-    ctx.lineTo(size * 0.55, size * 1.15);
-    ctx.closePath();
-    ctx.fill();
-    // lijf
-    ctx.beginPath();
-    ctx.ellipse(0, 0, size * 0.6, size, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // mond (bij de jager: happende bek met tanden)
-    if (mouth) {
-      ctx.fillStyle = "#0a0f14";
-      ctx.beginPath();
-      ctx.ellipse(0, -size * 0.78, size * 0.34, size * 0.26 + Math.abs(Math.sin(wob)) * size * 0.12, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#fff";
-      for (let i = -1; i <= 1; i++) {
-        ctx.beginPath();
-        ctx.moveTo(i * size * 0.16, -size * 0.92);
-        ctx.lineTo(i * size * 0.16 - size * 0.05, -size * 0.78);
-        ctx.lineTo(i * size * 0.16 + size * 0.05, -size * 0.78);
-        ctx.fill();
-      }
-    }
-    // oog
+    ctx.moveTo(0, s * 0.7); ctx.lineTo(-s * 0.6 + tw, s * 1.25); ctx.lineTo(s * 0.6 + tw, s * 1.25);
+    ctx.closePath(); ctx.fill();
+    // lijf met radiale gradient (volume) + rim-light contour
+    const bg = ctx.createRadialGradient(-s * 0.2, -s * 0.3, s * 0.1, 0, 0, s * 1.15);
+    bg.addColorStop(0, rim); bg.addColorStop(1, core);
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.62, s, 0, 0, 6.28); ctx.fill();
+    ctx.lineWidth = Math.max(1.5, s * 0.06); ctx.strokeStyle = "rgba(170,205,235,.5)";
+    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.62, s, 0, 0, 6.28); ctx.stroke();
+    // bek + tanden (meer tanden per tier)
+    ctx.fillStyle = "#070b11";
+    ctx.beginPath(); ctx.ellipse(0, -s * 0.78, s * 0.36, s * 0.26 + Math.abs(Math.sin(wob)) * s * 0.12, 0, 0, 6.28); ctx.fill();
     ctx.fillStyle = "#fff";
-    ctx.beginPath(); ctx.arc(size * 0.28, -size * 0.45, size * 0.18, 0, 6.28); ctx.fill();
-    ctx.fillStyle = "#10202c";
-    ctx.beginPath(); ctx.arc(size * 0.32, -size * 0.45, size * 0.09, 0, 6.28); ctx.fill();
+    const teeth = 3 + t;
+    for (let i = 0; i < teeth; i++) {
+      const tx = (-(teeth - 1) / 2 + i) * s * 0.17;
+      ctx.beginPath(); ctx.moveTo(tx, -s * 0.92); ctx.lineTo(tx - s * 0.05, -s * 0.74); ctx.lineTo(tx + s * 0.05, -s * 0.74); ctx.fill();
+    }
+    // gloeiende ogen (pulserend) + verticale spleet-pupil
+    const pulse = 0.7 + 0.3 * Math.sin(time * 5 + wob);
+    for (const ex of [-s * 0.3, s * 0.3]) {
+      const eg = ctx.createRadialGradient(ex, -s * 0.42, 0, ex, -s * 0.42, s * 0.32 * pulse);
+      eg.addColorStop(0, eyes[t][0]); eg.addColorStop(0.5, eyes[t][1]); eg.addColorStop(1, "rgba(255,40,0,0)");
+      ctx.fillStyle = eg;
+      ctx.beginPath(); ctx.arc(ex, -s * 0.42, s * 0.32 * pulse, 0, 6.28); ctx.fill();
+      ctx.fillStyle = "#0a0408";
+      ctx.beginPath(); ctx.ellipse(ex, -s * 0.42, s * 0.05, s * 0.14, 0, 0, 6.28); ctx.fill();
+    }
     ctx.restore();
   }
 
   function drawRoef() {
     if (player.invuln > 0 && Math.floor(time * 12) % 2 === 0) return; // knipper bij i-frames
     const cx = player.x, cy = S(player.y), s = player.r;
+    const spd = Math.hypot(player.vx, player.vy);
+
+    // warme gloed-halo: verankert Roef als enige warm-glanzende held
+    const halo = ctx.createRadialGradient(cx, cy, s * 0.4, cx, cy, s * 2.4);
+    halo.addColorStop(0, "rgba(255,150,60,.30)");
+    halo.addColorStop(1, "rgba(255,150,60,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(cx, cy, s * 2.4, 0, 6.28); ctx.fill();
+
+    // platte schaduw eronder (diepte-leesbaarheid)
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.beginPath(); ctx.ellipse(cx, cy + s * 1.3, s * 0.8, s * 0.28, 0, 0, 6.28); ctx.fill();
+
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(Math.atan2(player.hy, player.hx) + Math.PI / 2);  // neus wijst de zwemrichting op
+    // idle-dobber bij lage snelheid
+    const idle = 1 - Math.min(1, spd / 120);
+    ctx.translate(0, Math.sin(time * 2) * s * 0.12 * idle);
+    ctx.rotate(Math.atan2(player.hy, player.hx) + Math.PI / 2 + Math.sin(time * 1.6) * 0.05 * idle);
+    ctx.lineJoin = "round";
     // staart (kwispelt; sneller zwemmen = sneller kwispelen)
-    const wag = Math.sin(time * (8 + Math.hypot(player.vx, player.vy) * 0.02)) * s * 0.35;
+    const wag = Math.sin(time * (8 + spd * 0.02)) * s * 0.35;
     ctx.fillStyle = "#ff7a2f";
     ctx.beginPath();
     ctx.moveTo(0, s * 0.6);
@@ -392,33 +514,50 @@ window.onerror = function (msg, src, line, col) {
     ctx.fillStyle = "#ff9c5e";
     ctx.beginPath(); ctx.ellipse(-s * 0.6, s * 0.1, s * 0.35, s * 0.18, 0.6, 0, 6.28); ctx.fill();
     ctx.beginPath(); ctx.ellipse(s * 0.6, s * 0.1, s * 0.35, s * 0.18, -0.6, 0, 6.28); ctx.fill();
-    // lijf
-    ctx.fillStyle = "#ff8a3d";
+    // lijf met radiale gradient (volume) + lichte contour
+    const bg = ctx.createRadialGradient(-s * 0.25, -s * 0.35, s * 0.15, 0, 0, s * 1.15);
+    bg.addColorStop(0, "#ffb066"); bg.addColorStop(0.6, "#ff8a3d"); bg.addColorStop(1, "#e0641f");
+    ctx.fillStyle = bg;
     ctx.beginPath(); ctx.ellipse(0, 0, s * 0.7, s, 0, 0, 6.28); ctx.fill();
-    ctx.fillStyle = "#ffd9b0";
-    ctx.beginPath(); ctx.ellipse(0, s * 0.15, s * 0.4, s * 0.65, 0, 0, 6.28); ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(255,225,190,.6)";
+    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.7, s, 0, 0, 6.28); ctx.stroke();
+    // lichte buik + buikschaduw onderaan
+    ctx.fillStyle = "#ffe1c0";
+    ctx.beginPath(); ctx.ellipse(0, s * 0.12, s * 0.4, s * 0.62, 0, 0, 6.28); ctx.fill();
+    ctx.fillStyle = "rgba(120,40,0,.12)";
+    ctx.beginPath(); ctx.ellipse(0, s * 0.55, s * 0.5, s * 0.35, 0, 0, 6.28); ctx.fill();
     // oog
     ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(s * 0.28, -s * 0.45, s * 0.22, 0, 6.28); ctx.fill();
     ctx.fillStyle = "#16242e"; ctx.beginPath(); ctx.arc(s * 0.33, -s * 0.45, s * 0.11, 0, 6.28); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.beginPath(); ctx.arc(s * 0.26, -s * 0.5, s * 0.05, 0, 6.28); ctx.fill();
     ctx.restore();
   }
 
   function drawNet(n) {
     const y = S(n.y);
-    if (y < -30 || y > VH + 30) return;
+    if (y < -40 || y > VH + 40) return;
     const h = 26;
+    const sag = (x) => Math.sin((x / VW) * Math.PI) * 9;     // catenary-doorhang
     ctx.save();
-    ctx.strokeStyle = "rgba(235,240,220,.55)";
+    // zacht lichtband zodat het net opvalt als 'gate'
+    ctx.fillStyle = n.final ? "rgba(255,215,120,.10)" : "rgba(200,235,255,.07)";
+    ctx.fillRect(0, y - h, VW, h * 2);
+    // ruitjes-mesh (helderder)
+    ctx.strokeStyle = n.final ? "rgba(255,235,180,.7)" : "rgba(235,245,230,.62)";
     ctx.lineWidth = 1.5;
-    // ruitjes-mesh
-    for (let x = -h; x < VW + h; x += 14) {
-      ctx.beginPath(); ctx.moveTo(x, y - h / 2); ctx.lineTo(x + h, y + h / 2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x + h, y - h / 2); ctx.lineTo(x, y + h / 2); ctx.stroke();
+    for (let x = -h; x < VW + h; x += 13) {
+      const s0 = sag(x), s1 = sag(x + h);
+      ctx.beginPath(); ctx.moveTo(x, y - h / 2 + s0); ctx.lineTo(x + h, y + h / 2 + s1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + h, y - h / 2 + s1); ctx.lineTo(x, y + h / 2 + s0); ctx.stroke();
     }
-    // touwen boven/onder
-    ctx.strokeStyle = "rgba(120,90,60,.9)"; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(0, y - h / 2); ctx.lineTo(VW, y - h / 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, y + h / 2); ctx.lineTo(VW, y + h / 2); ctx.stroke();
+    // touwen boven/onder (goud voor het eind-net)
+    ctx.strokeStyle = n.final ? "rgba(220,180,80,.95)" : "rgba(120,90,60,.9)";
+    ctx.lineWidth = 3;
+    for (const off of [-h / 2, h / 2]) {
+      ctx.beginPath();
+      for (let x = 0; x <= VW; x += 16) { const yy = y + off + sag(x); x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy); }
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -426,12 +565,38 @@ window.onerror = function (msg, src, line, col) {
     const y = S(o.y);
     if (y < -50 || y > VH + 50) return;
     if (o.type === "rock") {
-      ctx.fillStyle = "#3b4754";
-      ctx.beginPath(); ctx.arc(o.x, y, o.r, 0, 6.28); ctx.fill();
-      ctx.fillStyle = "#2a333d";
-      ctx.beginPath(); ctx.arc(o.x - o.r * 0.3, y - o.r * 0.3, o.r * 0.5, 0, 6.28); ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,.05)";
-      ctx.beginPath(); ctx.arc(o.x + o.r * 0.35, y + o.r * 0.35, o.r * 0.35, 0, 6.28); ctx.fill();
+      const r = o.r, n = o.shape.length;
+      ctx.save();
+      ctx.translate(o.x, y);
+      // onregelmatig silhouet
+      ctx.beginPath();
+      for (let k = 0; k <= n; k++) {
+        const a = (k % n) / n * 6.283, rad = r * o.shape[k % n];
+        const px = Math.cos(a) * rad, py = Math.sin(a) * rad;
+        k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fillStyle = o.tint < 0.5 ? "#3b4754" : "#48433a"; ctx.fill();
+      // kernschaduw onder, top-licht boven (lichtbron = boven)
+      ctx.fillStyle = "rgba(0,0,0,.28)";
+      ctx.beginPath(); ctx.ellipse(0, r * 0.32, r * 0.6, r * 0.42, 0, 0, 6.28); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,.10)";
+      ctx.beginPath(); ctx.ellipse(-r * 0.15, -r * 0.4, r * 0.5, r * 0.3, 0, 0, 6.28); ctx.fill();
+      // vlekjes
+      ctx.fillStyle = "rgba(0,0,0,.18)";
+      for (const sp of o.spots) { ctx.beginPath(); ctx.arc(Math.cos(sp.a) * r * sp.d, Math.sin(sp.a) * r * sp.d, r * sp.s, 0, 6.28); ctx.fill(); }
+      ctx.restore();
+      // algen-rand bovenop (zodat de rots niet in het water wegvalt)
+      if (o.weed) {
+        ctx.strokeStyle = "#3a6b4a"; ctx.lineWidth = 3; ctx.lineCap = "round";
+        for (let k = -2; k <= 2; k++) {
+          const bx = o.x + k * r * 0.28;
+          ctx.beginPath(); ctx.moveTo(bx, y - r * 0.7);
+          ctx.quadraticCurveTo(bx + Math.sin(time * 2 + k) * 5, y - r, bx + Math.sin(time + k) * 4, y - r * 1.3);
+          ctx.stroke();
+        }
+        ctx.lineCap = "butt";
+      }
     } else {
       drawJellyfish(o, y);
     }
@@ -443,8 +608,8 @@ window.onerror = function (msg, src, line, col) {
     ctx.save();
     ctx.translate(o.x, y);
     ctx.rotate(o.dir + Math.PI / 2);                 // klok wijst de zwemrichting op, tentakels erachter
-    // zachte gloed
-    ctx.globalAlpha = 0.16;
+    // zachte gloed, gekoppeld aan de puls
+    ctx.globalAlpha = 0.12 + 0.2 * Math.max(0, pulse);
     ctx.fillStyle = o.col;
     ctx.beginPath(); ctx.arc(0, 0, r * 1.6, 0, 6.28); ctx.fill();
     ctx.globalAlpha = 1;
@@ -481,6 +646,18 @@ window.onerror = function (msg, src, line, col) {
   }
 
   function drawHUD() {
+    // hit-flash (volledig scherm) + kwetsbaar-vignet zolang i-frames lopen
+    if (state === "play" || state === "winning") {
+      if (player && player.invuln > 0) {
+        const va = 0.5 * (player.invuln / CFG.invulnTime);
+        const vg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.3, VW / 2, VH / 2, VH * 0.75);
+        vg.addColorStop(0, "rgba(200,30,30,0)");
+        vg.addColorStop(1, `rgba(200,30,30,${va.toFixed(3)})`);
+        ctx.fillStyle = vg; ctx.fillRect(0, 0, VW, VH);
+      }
+    }
+    if (hitFlash > 0) { ctx.fillStyle = `rgba(255,60,40,${(0.35 * hitFlash).toFixed(3)})`; ctx.fillRect(0, 0, VW, VH); }
+
     // hartjes
     ctx.font = "20px system-ui";
     ctx.textBaseline = "top";
@@ -560,16 +737,22 @@ window.onerror = function (msg, src, line, col) {
       return;
     }
 
-    // wereld
+    // wereld binnen een shake-offset (water + HUD blijven stil = leesbaar)
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    drawBackdrop();
+    drawPlankton();
     nets.forEach(drawNet);
-    for (const c of caught) {        // monstervissen vast in de netten
+    for (const c of caught) {        // monstervissen vast in de netten (spartelen)
       const y = S(c.y);
-      if (y > -80 && y < VH + 80) { c.wob += 0.02; fishPath(c.x, y, c.vis.size, c.wob + time * 4, c.vis.color, true); }
+      if (y > -80 && y < VH + 80) predatorPath(c.x, y, c.vis.size, c.wob, c.tier, c.thrash);
     }
     obstacles.forEach(drawObstacle);
     bubbles.forEach(drawBubble);
-    if (state === "play") fishPath(predator.x, S(predator.y), predator.vis.size, predator.wob, predator.vis.color, true);
+    drawFog();                        // atmosferische waas over achtergrond/midground
+    if (state === "play") predatorPath(predator.x, S(predator.y), predator.vis.size, predator.wob, predator.tier, 0);
     drawRoef();
+    ctx.restore();
     drawHUD();
 
     if (state === "win") {
