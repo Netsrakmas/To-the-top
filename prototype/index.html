@@ -44,9 +44,9 @@ window.onerror = function (msg, src, line, col) {
   const CFG = {
     levelsTall: 5,            // hoogte van het level in schermen
     maxCanvasW: 480,          // op desktop centreren; op telefoon = volle breedte
-    impulse: 2.2,            // veeg = duwtje: veeg-pixels -> extra snelheid (geen vinger-volgen)
-    maxSpeed: 600,            // max zwemsnelheid (px/s)
-    friction: 0.94,          // demping per 1/60s -> glijdt door en dooft uit
+    impulse: 2.5,            // veeg = duwtje: veeg-pixels -> extra snelheid (geen vinger-volgen)
+    maxSpeed: 700,            // max zwemsnelheid (px/s)
+    friction: 0.945,         // demping per 1/60s -> glijdt door en dooft uit
     gravity: 160,            // px/s^2 zachte zwaartekracht (zakken als je niets doet)
     netSlow: 0.45,            // snelheidsfactor terwijl je door een net glipt
     playerR: 16,
@@ -127,7 +127,7 @@ window.onerror = function (msg, src, line, col) {
   function startGame() {
     const worldH = VH * CFG.levelsTall;
     world = { h: worldH };
-    player = { x: VW / 2, y: worldH - 70, vx: 0, vy: 0, r: CFG.playerR, inNet: false, invuln: 0 };
+    player = { x: VW / 2, y: worldH - 70, vx: 0, vy: 0, hx: 0, hy: -1, r: CFG.playerR, inNet: false, invuln: 0 };
     hearts = CFG.hearts;
     score = 0; time = 0; winT = 0;
     banner = ""; bannerT = 0;
@@ -146,11 +146,16 @@ window.onerror = function (msg, src, line, col) {
       const y = rnd(160, worldH - 220);
       if (nearNet(y)) continue;
       const type = Math.random() < 0.55 ? "rock" : "jelly";
+      const cols = ["#d98cff", "#a78cff", "#8cc6ff", "#ff9ce0"];
       obstacles.push({
         type, x: rnd(30, VW - 30), y,
-        r: type === "rock" ? rnd(20, 40) : rnd(16, 24),
-        vx: type === "jelly" ? (Math.random() < 0.5 ? -1 : 1) * rnd(20, 55) : 0,
+        r: type === "rock" ? rnd(20, 40) : rnd(17, 26),
         ph: rnd(0, 6.28),
+        // kwal-eigenschappen: kleur, pulssnelheid, zwemrichting + snelheid
+        col: cols[(Math.random() * cols.length) | 0],
+        pulse: rnd(2.4, 3.8),
+        dir: (Math.random() < 0.5 ? 0 : Math.PI) + rnd(-0.45, 0.45),
+        speed: rnd(30, 65),
       });
     }
 
@@ -200,6 +205,13 @@ window.onerror = function (msg, src, line, col) {
       player.y += player.vy * dt * slow;
       const fr = Math.pow(CFG.friction, dt * 60);        // demping (glijdt uit)
       player.vx *= fr; player.vy *= fr;
+      // Roef draait naar zijn zwemrichting (vloeiend)
+      const spd2 = Math.hypot(player.vx, player.vy);
+      if (spd2 > 30) {
+        const k = Math.min(1, 9 * dt);
+        player.hx += (player.vx / spd2 - player.hx) * k;
+        player.hy += (player.vy / spd2 - player.hy) * k;
+      }
       // niet tegen de randen blijven duwen
       if (player.x <= player.r || player.x >= VW - player.r) player.vx = 0;
       player.x = clamp(player.x, player.r, VW - player.r);
@@ -246,8 +258,13 @@ window.onerror = function (msg, src, line, col) {
     // --- obstakels ---
     for (const o of obstacles) {
       if (o.type === "jelly") {
-        o.x += o.vx * dt;
-        if (o.x < o.r || o.x > VW - o.r) o.vx *= -1;
+        // pulserende voortstuwing: sneller tijdens het samentrekken van de klok
+        const burst = Math.max(0, Math.sin(time * o.pulse + o.ph));
+        const v = o.speed * (0.3 + 1.1 * burst);
+        o.x += Math.cos(o.dir) * v * dt;
+        o.y += Math.sin(o.dir) * v * dt * 0.5;
+        if (o.x < o.r) { o.x = o.r; o.dir = Math.PI - o.dir; }
+        if (o.x > VW - o.r) { o.x = VW - o.r; o.dir = Math.PI - o.dir; }
       }
       if (state === "play" && player.invuln <= 0) {
         const d = Math.hypot(o.x - player.x, o.y - player.y);
@@ -362,10 +379,14 @@ window.onerror = function (msg, src, line, col) {
     const cx = player.x, cy = S(player.y), s = player.r;
     ctx.save();
     ctx.translate(cx, cy);
-    // staart
+    ctx.rotate(Math.atan2(player.hy, player.hx) + Math.PI / 2);  // neus wijst de zwemrichting op
+    // staart (kwispelt; sneller zwemmen = sneller kwispelen)
+    const wag = Math.sin(time * (8 + Math.hypot(player.vx, player.vy) * 0.02)) * s * 0.35;
     ctx.fillStyle = "#ff7a2f";
     ctx.beginPath();
-    ctx.moveTo(0, s * 0.6); ctx.lineTo(-s * 0.7, s * 1.25); ctx.lineTo(s * 0.7, s * 1.25);
+    ctx.moveTo(0, s * 0.6);
+    ctx.lineTo(-s * 0.7 + wag, s * 1.25);
+    ctx.lineTo(s * 0.7 + wag, s * 1.25);
     ctx.closePath(); ctx.fill();
     // zijvinnen
     ctx.fillStyle = "#ff9c5e";
@@ -409,20 +430,44 @@ window.onerror = function (msg, src, line, col) {
       ctx.beginPath(); ctx.arc(o.x, y, o.r, 0, 6.28); ctx.fill();
       ctx.fillStyle = "#2a333d";
       ctx.beginPath(); ctx.arc(o.x - o.r * 0.3, y - o.r * 0.3, o.r * 0.5, 0, 6.28); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,.05)";
+      ctx.beginPath(); ctx.arc(o.x + o.r * 0.35, y + o.r * 0.35, o.r * 0.35, 0, 6.28); ctx.fill();
     } else {
-      const pulse = 1 + Math.sin(time * 3 + o.ph) * 0.08;
-      ctx.save();
-      ctx.globalAlpha = 0.8;
-      ctx.fillStyle = "#d98cff";
-      ctx.beginPath(); ctx.ellipse(o.x, y, o.r * pulse, o.r * 0.8 * pulse, 0, Math.PI, 0); ctx.fill();
-      ctx.strokeStyle = "rgba(217,140,255,.6)"; ctx.lineWidth = 2;
-      for (let i = -2; i <= 2; i++) {
-        ctx.beginPath(); ctx.moveTo(o.x + i * o.r * 0.3, y);
-        ctx.quadraticCurveTo(o.x + i * o.r * 0.3 + Math.sin(time * 4 + i) * 5, y + o.r * 1.4, o.x + i * o.r * 0.3, y + o.r * 2);
-        ctx.stroke();
-      }
-      ctx.restore();
+      drawJellyfish(o, y);
     }
+  }
+
+  function drawJellyfish(o, y) {
+    const pulse = Math.sin(time * o.pulse + o.ph);   // -1..1
+    const r = o.r;
+    ctx.save();
+    ctx.translate(o.x, y);
+    ctx.rotate(o.dir + Math.PI / 2);                 // klok wijst de zwemrichting op, tentakels erachter
+    // zachte gloed
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = o.col;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.6, 0, 6.28); ctx.fill();
+    ctx.globalAlpha = 1;
+    // tentakels (golvend, slepen achter de klok)
+    ctx.strokeStyle = o.col; ctx.lineWidth = 2.2; ctx.globalAlpha = 0.85;
+    for (let i = -3; i <= 3; i++) {
+      const tx = i * r * 0.16;
+      const wob = Math.sin(time * o.pulse * 1.6 + i * 0.7 + o.ph) * r * 0.22;
+      ctx.beginPath();
+      ctx.moveTo(tx, r * 0.15);
+      ctx.quadraticCurveTo(tx + wob, r * 0.95, tx + wob * 0.6, r * 1.8);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // klok (samentrekken/uitzetten = voortstuwing)
+    const sx = 1 + 0.14 * pulse, syc = 1 - 0.16 * pulse;
+    ctx.fillStyle = o.col;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * sx, r * 0.9 * syc, 0, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, r * sx, r * 0.28 * syc, 0, 0, Math.PI); ctx.fill();
+    // glansje + frilletjes onder de rand
+    ctx.fillStyle = "rgba(255,255,255,.28)";
+    ctx.beginPath(); ctx.ellipse(-r * 0.32 * sx, -r * 0.3, r * 0.22, r * 0.16, 0, 0, 6.28); ctx.fill();
+    ctx.restore();
   }
 
   function drawBubble(b) {
