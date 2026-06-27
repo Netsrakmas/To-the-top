@@ -44,8 +44,10 @@ window.onerror = function (msg, src, line, col) {
   const CFG = {
     levelsTall: 5,            // hoogte van het level in schermen
     maxCanvasW: 480,          // op desktop centreren; op telefoon = volle breedte
-    dragSens: 1.35,           // hoe sterk Roef je veeg-beweging volgt (relatief)
-    sinkSpeed: 60,            // px/s zachtjes zakken als je niet veegt
+    dragSens: 0.9,            // veegsnelheid -> zwemsnelheid (flick)
+    maxSpeed: 560,            // max zwemsnelheid (px/s)
+    friction: 0.90,          // demping per 1/60s -> rechte lijn die uitdooft
+    gravity: 170,            // px/s^2 zachte zwaartekracht (zakken als je niets doet)
     netSlow: 0.45,            // snelheidsfactor terwijl je door een net glipt
     playerR: 16,
     hearts: 3,
@@ -125,7 +127,7 @@ window.onerror = function (msg, src, line, col) {
   function startGame() {
     const worldH = VH * CFG.levelsTall;
     world = { h: worldH };
-    player = { x: VW / 2, y: worldH - 70, r: CFG.playerR, inNet: false, invuln: 0 };
+    player = { x: VW / 2, y: worldH - 70, vx: 0, vy: 0, r: CFG.playerR, inNet: false, invuln: 0 };
     hearts = CFG.hearts;
     score = 0; time = 0; winT = 0;
     banner = ""; bannerT = 0;
@@ -186,11 +188,20 @@ window.onerror = function (msg, src, line, col) {
 
     // --- speler ---
     if (state === "play") {
-      const sens = CFG.dragSens * (player.inNet ? CFG.netSlow : 1);
-      player.x += ptr.dx * sens;          // relatieve veeg sinds vorige frame
-      player.y += ptr.dy * sens;
-      ptr.dx = 0; ptr.dy = 0;
-      if (!ptr.active) player.y += CFG.sinkSpeed * dt;   // niet vegen = zachtjes zakken
+      // Veeg = flick: zet snelheid in de veegrichting; Roef zwemt in een rechte lijn door.
+      if (ptr.dx !== 0 || ptr.dy !== 0) {
+        player.vx = (ptr.dx / dt) * CFG.dragSens;
+        player.vy = (ptr.dy / dt) * CFG.dragSens;
+        ptr.dx = 0; ptr.dy = 0;
+      }
+      player.vy += CFG.gravity * dt;                    // zachte zwaartekracht
+      const sp = Math.hypot(player.vx, player.vy);      // snelheid begrenzen
+      if (sp > CFG.maxSpeed) { const k = CFG.maxSpeed / sp; player.vx *= k; player.vy *= k; }
+      const slow = player.inNet ? CFG.netSlow : 1;
+      player.x += player.vx * dt * slow;
+      player.y += player.vy * dt * slow;
+      const fr = Math.pow(CFG.friction, dt * 60);        // demping (rechte lijn dooft uit)
+      player.vx *= fr; player.vy *= fr;
       player.x = clamp(player.x, player.r, VW - player.r);
       player.y = clamp(player.y, 40, world.h - player.r);
       if (player.invuln > 0) player.invuln -= dt;
@@ -494,8 +505,8 @@ window.onerror = function (msg, src, line, col) {
       centerText([
         { t: "🐟  ROEF DE VIS", f: "bold 30px system-ui", s: 40, c: "#ffb066" },
         { t: "To the Top", f: "italic 20px system-ui", s: 50, c: "#cfeeff" },
-        { t: "Veeg ergens op het scherm om te zwemmen", f: "15px system-ui", s: 24 },
-        { t: "(je vinger hoeft niet op de vis).", f: "15px system-ui", s: 28 },
+        { t: "Veeg een richting op → Roef zwemt", f: "15px system-ui", s: 24 },
+        { t: "die kant op in een rechte lijn.", f: "15px system-ui", s: 28 },
         { t: "Glip door de netten — de monstervis", f: "15px system-ui", s: 24 },
         { t: "kan er niet door en raakt verstrikt.", f: "15px system-ui", s: 44 },
         { t: "Ontwijk rotsen & kwallen. Haal de top!", f: "15px system-ui", s: 50, c: "#9fd" },
