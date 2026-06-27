@@ -44,8 +44,8 @@ window.onerror = function (msg, src, line, col) {
   const CFG = {
     levelsTall: 5,            // hoogte van het level in schermen
     maxCanvasW: 480,          // op desktop centreren; op telefoon = volle breedte
-    playerSpeed: 320,         // px/s waarmee Roef zijn vinger volgt
-    sinkSpeed: 70,            // px/s zakken als je loslaat
+    dragSens: 1.35,           // hoe sterk Roef je veeg-beweging volgt (relatief)
+    sinkSpeed: 60,            // px/s zachtjes zakken als je niet veegt
     netSlow: 0.45,            // snelheidsfactor terwijl je door een net glipt
     playerR: 16,
     hearts: 3,
@@ -82,19 +82,28 @@ window.onerror = function (msg, src, line, col) {
   // ---------------------------------------------------------------------------
   // Input (muis + touch via pointer events)
   // ---------------------------------------------------------------------------
-  const ptr = { active: false, x: VW / 2, y: VH / 2 };
+  // Relatieve veeg-besturing: Roef beweegt mee met je veeg, waar je ook tikt.
+  const ptr = { active: false, x: 0, y: 0, lastX: 0, lastY: 0, dx: 0, dy: 0 };
   function setPtr(e) {
     const r = canvas.getBoundingClientRect();
     ptr.x = e.clientX - r.left;
     ptr.y = e.clientY - r.top;
   }
   canvas.addEventListener("pointerdown", (e) => {
-    setPtr(e); ptr.active = true;
+    setPtr(e); ptr.active = true; ptr.lastX = ptr.x; ptr.lastY = ptr.y; ptr.dx = 0; ptr.dy = 0;
     if (state === "title") startGame();
     else if (state === "win" || state === "lose") resetToTitle();
     e.preventDefault();
   });
-  canvas.addEventListener("pointermove", (e) => { setPtr(e); e.preventDefault(); });
+  canvas.addEventListener("pointermove", (e) => {
+    setPtr(e);
+    if (ptr.active) {                       // som de veeg-beweging op tot de volgende frame
+      ptr.dx += ptr.x - ptr.lastX;
+      ptr.dy += ptr.y - ptr.lastY;
+      ptr.lastX = ptr.x; ptr.lastY = ptr.y;
+    }
+    e.preventDefault();
+  });
   canvas.addEventListener("pointerup",   (e) => { ptr.active = false; e.preventDefault(); });
   canvas.addEventListener("pointercancel", () => { ptr.active = false; });
 
@@ -177,18 +186,11 @@ window.onerror = function (msg, src, line, col) {
 
     // --- speler ---
     if (state === "play") {
-      let maxStep = CFG.playerSpeed * dt;
-      if (player.inNet) maxStep *= CFG.netSlow;
-      if (ptr.active) {
-        const tx = ptr.x, ty = ptr.y + camY;
-        const dx = tx - player.x, dy = ty - player.y;
-        const d = Math.hypot(dx, dy) || 1;
-        const step = Math.min(d, maxStep);
-        player.x += (dx / d) * step;
-        player.y += (dy / d) * step;
-      } else {
-        player.y += CFG.sinkSpeed * dt;   // loslaten = zakken
-      }
+      const sens = CFG.dragSens * (player.inNet ? CFG.netSlow : 1);
+      player.x += ptr.dx * sens;          // relatieve veeg sinds vorige frame
+      player.y += ptr.dy * sens;
+      ptr.dx = 0; ptr.dy = 0;
+      if (!ptr.active) player.y += CFG.sinkSpeed * dt;   // niet vegen = zachtjes zakken
       player.x = clamp(player.x, player.r, VW - player.r);
       player.y = clamp(player.y, 40, world.h - player.r);
       if (player.invuln > 0) player.invuln -= dt;
@@ -492,7 +494,8 @@ window.onerror = function (msg, src, line, col) {
       centerText([
         { t: "🐟  ROEF DE VIS", f: "bold 30px system-ui", s: 40, c: "#ffb066" },
         { t: "To the Top", f: "italic 20px system-ui", s: 50, c: "#cfeeff" },
-        { t: "Sleep om te zwemmen — loslaten = zakken.", f: "15px system-ui", s: 28 },
+        { t: "Veeg ergens op het scherm om te zwemmen", f: "15px system-ui", s: 24 },
+        { t: "(je vinger hoeft niet op de vis).", f: "15px system-ui", s: 28 },
         { t: "Glip door de netten — de monstervis", f: "15px system-ui", s: 24 },
         { t: "kan er niet door en raakt verstrikt.", f: "15px system-ui", s: 44 },
         { t: "Ontwijk rotsen & kwallen. Haal de top!", f: "15px system-ui", s: 50, c: "#9fd" },

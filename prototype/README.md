@@ -19,8 +19,10 @@ python3 -m http.server 8000
 
 ## Besturing
 
-- **Sleep** met vinger of muis → Roef volgt (over de volle breedte).
-- **Loslaten** → Roef zakt langzaam (de jager wint dan terrein).
+- **Veeg** ergens op het scherm (vinger of muis) → Roef beweegt mee, zoals scrollen.
+  Je vinger hoeft **niet** op de vis te staan; je kunt loslaten en opnieuw vegen
+  ("re-grippen") om verder omhoog te komen.
+- **Niet vegen** → Roef zakt langzaam (de jager wint dan terrein).
 - Tik om te starten / opnieuw te spelen.
 
 ## Wat is geïmplementeerd

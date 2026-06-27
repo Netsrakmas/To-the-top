@@ -94,14 +94,14 @@ met oplopende muziek.
 
 ## 5. Besturing
 
-**Gekozen schema (prototype) — sleep-besturing (volle breedte):**
-- De speler legt de duim op het scherm; **Roef volgt de vingerpositie** (horizontaal
-  én verticaal), met een gemaximeerde zwemsnelheid zodat obstakels en de jager ertoe
-  blijven doen.
-- **Loslaten** laat Roef langzaam terugzakken (drijfvermogen) → de jager wint terrein.
-  Dit geeft de pick-up-and-play-gevoel om de kern snel te valideren.
-- Dit is geïmplementeerd in het [prototype](../prototype/). Het "actief stuwen"-variant
-  (vasthouden = stoot omhoog) blijft een te testen alternatief.
+**Gekozen schema (prototype) — relatieve veeg-besturing (volle breedte):**
+- De speler **veegt** ergens op het scherm; Roef beweegt **relatief** mee (zoals
+  scrollen), dus de vinger hoeft niet op de vis te staan en zit niet in de weg. Je
+  kunt loslaten en opnieuw vegen ("re-grippen") om verder omhoog te komen.
+- **Niet vegen** laat Roef langzaam terugzakken (drijfvermogen) → de jager wint terrein.
+- Dit is geïmplementeerd in het [prototype](../prototype/). Eerder getest: absolute
+  "volg-de-vinger" voelde onhandig op mobiel (vinger in de weg) → vervangen door
+  relatief vegen. Het "actief stuwen"-variant blijft een te testen alternatief.
 
 **Alternatieven (te testen):**
 - **Actief stuwen:** vasthouden = stuwstoot omhoog, loslaten = zakken; meer skill/ritme.
