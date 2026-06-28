@@ -33,9 +33,13 @@ python3 -m http.server 8000
   verstrikt en een **grotere** monstervis komt van onderaf opzetten.
 - **Net-ontknoping:** bij het bovenste net raakt de grote vis vast → Roef ontsnapt →
   **cliffhanger** (er cirkelt een meeuw).
-- **Obstakels:** **rotsen blokkeren** je als vaste muren (geen levensverlies — je
-  glijdt eraf), terwijl **geanimeerde kwallen prikken** (treffer kost een ❤). Kwallen
-  zwemmen pulserend elk een eigen richting op (klok naar voren, tentakels slepen mee).
+- **Obstakels & vijanden:** **rotsen blokkeren** je als vaste muren (geen
+  levensverlies — je glijdt eraf). Alle vijanden **prikken** (treffer kost een ❤) en
+  variëren per dieptezone:
+  - 🦔 **zee-egels** boven (draaiende stekelballen),
+  - 🐡 **kogelvissen** in het midden (blazen zich op — grotere hitbox als ze bol staan, dus timing telt),
+  - 🏮 **lampvissen** diep onder (donker lijf, happende bek, gloeiend loklampje),
+  - 🪼 **kwallen overal** (pulserend, zwemmen elk een eigen kant op).
 - **Roef draait mee** in de richting waarin je hem stuurt en kwispelt met zijn staart.
 - **Luchtbellen** als collectible (score) — géén zuurstofmeter (we zijn een vis 🐟).
 - HUD: hartjes, score, voortgangsbalk naar de top, en een rode "jager-nabijheid"-gloed
