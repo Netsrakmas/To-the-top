@@ -27,7 +27,7 @@ python3 -m http.server 8000
 
 ## Wat is geïmplementeerd
 
-- Verticaal level van **5 schermen hoog**, met meescrollende camera (niet terug omlaag).
+- Verticaal level van **10 schermen hoog**, met meescrollende camera (niet terug omlaag).
 - **Roef** met sleep-besturing over de volle schermbreedte.
 - **Escalerende jager:** 3 monstervissen. Glip door een net → de huidige jager raakt
   verstrikt en een **grotere** monstervis komt van onderaf opzetten.
@@ -62,9 +62,10 @@ leesbaarheid en 60fps:
   koele water.
 - **Monstervissen:** dreigend silhouet met rim-light, pulserend gloeiende ogen en
   spleet-pupillen; enger/feller per tier; gevangen vissen spartelen in het net.
-- **Sfeer:** meerpunts diepte-gradient (turquoise → afgrond), geanimeerde godrays,
-  oppervlak-shimmer + caustics, zwevend plankton, parallax wier-silhouetten en een
-  atmosferische diepte-waas.
+- **Sfeer & diepte:** meerpunts diepte-gradient (turquoise → afgrond), geanimeerde
+  godrays, oppervlak-shimmer + caustics, zwevend plankton, parallax wier-silhouetten,
+  atmosferische diepte-waas, een **voorgrond-bokeh-laag** (onscherpe deeltjes dicht
+  bij de lens) en een cinematisch **edge-vignet**.
 - **Objecten:** onregelmatige, getextureerde rotsen met algen; koel-gekleurde,
   pulserende kwallen; stijgende luchtbellen; netten met doorhang + gloed (goud voor
   het eind-net).

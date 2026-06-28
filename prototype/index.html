@@ -42,7 +42,7 @@ window.onerror = function (msg, src, line, col) {
   // Config — Roef de Vis: To the Top (speelbaar prototype)
   // ---------------------------------------------------------------------------
   const CFG = {
-    levelsTall: 5,            // hoogte van het level in schermen
+    levelsTall: 10,           // hoogte van het level in schermen (2x hoger)
     maxCanvasW: 480,          // op desktop centreren; op telefoon = volle breedte
     impulse: 2.5,            // veeg = duwtje: veeg-pixels -> extra snelheid (geen vinger-volgen)
     maxSpeed: 700,            // max zwemsnelheid (px/s)
@@ -114,7 +114,7 @@ window.onerror = function (msg, src, line, col) {
   // ---------------------------------------------------------------------------
   let state = "title";   // title | play | winning | win | lose
   let world = { h: VH * CFG.levelsTall }, camY = 0;   // defaults zodat de titel-achtergrond werkt
-  let player, predator, caught, nets, obstacles, bubbles, plankton, bgWeeds;
+  let player, predator, caught, nets, obstacles, bubbles, plankton, bgWeeds, fgBokeh;
   let score, hearts, time = 0, banner, bannerT, winT;
   let depthTop = 0;          // 0 oppervlak .. 1 diep (gedeeld door achtergrond/sfeer)
   let shake = 0, hitFlash = 0;
@@ -145,7 +145,7 @@ window.onerror = function (msg, src, line, col) {
     obstacles = [];
     const nearNet = (y) => nets.some((n) => Math.abs(n.y - y) < 70);
     const jellyCols = ["#b06fe0", "#7d8cff", "#5fd8e0", "#9a6ff0"];   // koele familie; alleen Roef is warm
-    for (let i = 0; i < 52; i++) {
+    for (let i = 0; i < Math.round(CFG.levelsTall * 10.4); i++) {   // dichtheid gelijk bij hoger level
       const y = rnd(160, worldH - 220);
       if (nearNet(y)) continue;
       const zone = y / worldH;        // 0 = oppervlak (boven) .. 1 = diep (onder)
@@ -182,7 +182,7 @@ window.onerror = function (msg, src, line, col) {
 
     // luchtbellen (stijgen + zigzag); score-bellen verdwijnen, rest wrapt onderaan
     bubbles = [];
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < Math.round(CFG.levelsTall * 12); i++) {
       bubbles.push({ x: rnd(20, VW - 20), y: rnd(120, worldH - 120), r: rnd(5, 9), got: false,
         vy: rnd(18, 40), ph: rnd(0, 6.28), wspd: rnd(1.5, 3) });
     }
@@ -193,8 +193,13 @@ window.onerror = function (msg, src, line, col) {
       plankton.push({ x: rnd(0, VW), y: rnd(0, VH), r: rnd(0.6, 2.2), spd: rnd(4, 14), amp: rnd(4, 14), ph: rnd(0, 6.28) });
     }
     bgWeeds = [];
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < Math.round(CFG.levelsTall * 3.2); i++) {
       bgWeeds.push({ x: rnd(-10, VW + 10), y: rnd(0, worldH), h: rnd(60, 150), w: rnd(8, 18), ph: rnd(0, 6.28), edge: Math.random() < 0.5 });
+    }
+    // voorgrond-bokeh: grote onscherpe deeltjes dicht bij de "lens" -> diepte
+    fgBokeh = [];
+    for (let i = 0; i < 9; i++) {
+      fgBokeh.push({ x: rnd(0, VW), y: rnd(0, VH), r: rnd(22, 55), spd: rnd(10, 26), ph: rnd(0, 6.28), a: rnd(0.04, 0.10) });
     }
 
     shake = 0; hitFlash = 0;
@@ -464,6 +469,30 @@ window.onerror = function (msg, src, line, col) {
     ctx.fillRect(0, 0, VW, VH);
   }
 
+  // voorgrond-bokeh: onscherpe deeltjes dicht bij de lens (snelle parallax) -> diepte
+  function drawForeground() {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const f of fgBokeh) {
+      const py = (((f.y - time * f.spd - camY * 1.5) % VH) + VH) % VH;
+      const px = f.x + Math.sin(time * 0.4 + f.ph) * 18;
+      const g = ctx.createRadialGradient(px, py, 0, px, py, f.r);
+      g.addColorStop(0, `rgba(190,225,255,${f.a})`);
+      g.addColorStop(1, "rgba(190,225,255,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(px, py, f.r, 0, 6.28); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // cinematisch edge-vignet (donkere hoeken, focus naar het midden)
+  function drawVignette() {
+    const vg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.45, VW / 2, VH / 2, VH * 0.8);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,14,.34)");
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, VW, VH);
+  }
+
   // monstervis (predator + gevangen): dreigend silhouet, rim-light, gloeiende ogen
   function predatorPath(cx, cy, s, wob, tier, thrash) {
     thrash = thrash || 0;
@@ -540,10 +569,11 @@ window.onerror = function (msg, src, line, col) {
     ctx.lineTo(-s * 0.7 + wag, s * 1.25);
     ctx.lineTo(s * 0.7 + wag, s * 1.25);
     ctx.closePath(); ctx.fill();
-    // zijvinnen
+    // zijvinnen (flutteren mee tijdens het zwemmen)
+    const fin = Math.sin(time * 9) * 0.3;
     ctx.fillStyle = "#ff9c5e";
-    ctx.beginPath(); ctx.ellipse(-s * 0.6, s * 0.1, s * 0.35, s * 0.18, 0.6, 0, 6.28); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(s * 0.6, s * 0.1, s * 0.35, s * 0.18, -0.6, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-s * 0.6, s * 0.1, s * 0.35, s * 0.18, 0.6 + fin, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s * 0.6, s * 0.1, s * 0.35, s * 0.18, -0.6 - fin, 0, 6.28); ctx.fill();
     // lijf met radiale gradient (volume) + lichte contour
     const bg = ctx.createRadialGradient(-s * 0.25, -s * 0.35, s * 0.15, 0, 0, s * 1.15);
     bg.addColorStop(0, "#ffb066"); bg.addColorStop(0.6, "#ff8a3d"); bg.addColorStop(1, "#e0641f");
@@ -893,6 +923,8 @@ window.onerror = function (msg, src, line, col) {
     if (state === "play") predatorPath(predator.x, S(predator.y), predator.vis.size, predator.wob, predator.tier, 0);
     drawRoef();
     ctx.restore();
+    drawForeground();   // bokeh-deeltjes dicht bij de lens (geen shake)
+    drawVignette();     // cinematische focus
     drawHUD();
 
     if (state === "win") {
