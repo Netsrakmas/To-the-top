@@ -7,14 +7,14 @@
 <style>
   html, body {
     margin: 0; padding: 0; height: 100%;
-    background: #04121f;
+    background: linear-gradient(#0a3550, #04121f);
     overflow: hidden;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     -webkit-user-select: none; user-select: none;
     touch-action: none;
   }
   #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
-  canvas { display: block; background: #07263c; box-shadow: 0 0 40px rgba(0,0,0,.6); }
+  canvas { display: block; background: #07263c; box-shadow: 0 0 60px rgba(0,0,0,.7); }
 </style>
 </head>
 <body>
@@ -42,21 +42,21 @@ window.onerror = function (msg, src, line, col) {
   // Config — Roef de Vis: To the Top (speelbaar prototype)
   // ---------------------------------------------------------------------------
   const CFG = {
-    levelsTall: 10,           // hoogte van het level in schermen (2x hoger)
+    levelsTall: 10,           // hoogte van het level in schermen
     maxCanvasW: 480,          // op desktop centreren; op telefoon = volle breedte
-    impulse: 2.5,            // veeg = duwtje: veeg-pixels -> extra snelheid (geen vinger-volgen)
+    impulse: 2.5,             // veeg = duwtje: veeg-pixels -> extra snelheid (geen vinger-volgen)
     maxSpeed: 700,            // max zwemsnelheid (px/s)
-    friction: 0.945,         // demping per 1/60s -> glijdt door en dooft uit
-    gravity: 160,            // px/s^2 zachte zwaartekracht (zakken als je niets doet)
+    friction: 0.945,          // demping per 1/60s -> glijdt door en dooft uit
+    gravity: 160,             // px/s^2 zachte zwaartekracht (zakken als je niets doet)
     netSlow: 0.45,            // snelheidsfactor terwijl je door een net glipt
     playerR: 16,
     hearts: 3,
     invulnTime: 1.2,          // onkwetsbaar na een treffer (s)
     // jager (monstervis) per tier: snelheid (px/s) en grootte
     predators: [
-      { speed: 165, size: 30, color: "#3a5d74", name: "kleine monstervis" },
-      { speed: 205, size: 46, color: "#2f4a63", name: "grote monstervis" },
-      { speed: 250, size: 68, color: "#21303f", name: "reuzen-monstervis" },
+      { speed: 165, size: 30, name: "kleine monstervis" },
+      { speed: 205, size: 46, name: "grote monstervis" },
+      { speed: 250, size: 68, name: "reuzen-monstervis" },
     ],
     predatorRamp: 6,          // extra px/s per 10s (oplopende druk)
   };
@@ -110,34 +110,119 @@ window.onerror = function (msg, src, line, col) {
   canvas.addEventListener("pointercancel", () => { ptr.active = false; });
 
   // ---------------------------------------------------------------------------
-  // Sprite-assets (embedded cartoon-SVG). Ontbreekt/faalt een sprite, dan valt
-  // de teken-functie automatisch terug op de procedurele tekening — nul regressie.
-  // Eigen art? Vervang de data-URI hieronder door je eigen PNG/SVG als data-URI
-  // (base64) zodat het één offline bestand blijft, of laad uit een assets/-map.
-  // Sprites wijzen met de neus OMHOOG (Roef roteert naar zijn zwemrichting).
+  // Helpers
   // ---------------------------------------------------------------------------
-  const SPRITE_SRC = {
-    roef: "data:image/svg+xml," + encodeURIComponent(
-      "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 130'>" +
-      "<defs><radialGradient id='b' cx='40%' cy='28%' r='78%'>" +
-      "<stop offset='0' stop-color='#ffc884'/><stop offset='55%' stop-color='#ff8a3d'/><stop offset='100%' stop-color='#df6017'/>" +
-      "</radialGradient></defs>" +
-      "<path d='M50 90 C41 106 31 114 35 126 C45 120 50 112 50 103 C50 112 55 120 65 126 C69 114 59 106 50 90 Z' fill='#ff7a2f' stroke='#bf4f18' stroke-width='3' stroke-linejoin='round'/>" +
-      "<ellipse cx='22' cy='72' rx='15' ry='7.5' transform='rotate(38 22 72)' fill='#ff9c5e' stroke='#bf4f18' stroke-width='2.5'/>" +
-      "<ellipse cx='78' cy='72' rx='15' ry='7.5' transform='rotate(-38 78 72)' fill='#ff9c5e' stroke='#bf4f18' stroke-width='2.5'/>" +
-      "<ellipse cx='50' cy='58' rx='30' ry='42' fill='url(#b)' stroke='#bf4f18' stroke-width='3.5'/>" +
-      "<ellipse cx='50' cy='68' rx='17' ry='27' fill='#ffe3c4' opacity='.85'/>" +
-      "<path d='M40 50 Q50 59 60 50' fill='none' stroke='#bf4f18' stroke-width='2.5' stroke-linecap='round'/>" +
-      "<circle cx='62' cy='38' r='11' fill='#fff' stroke='#bf4f18' stroke-width='2'/>" +
-      "<circle cx='65' cy='39' r='5.5' fill='#16242e'/><circle cx='60' cy='35' r='2.3' fill='#fff'/>" +
-      "</svg>"
-    ),
-  };
-  const sprites = {};
-  for (const k in SPRITE_SRC) {
-    const im = new Image();
-    im.onload = () => { sprites[k] = im; };
-    im.src = SPRITE_SRC[k];
+  const TAU = Math.PI * 2;
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+
+  function rr(c, x, y, w, h, r) {           // rounded rect pad (eigen helper = overal support)
+    r = Math.min(r, w / 2, h / 2);
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r);
+    c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r);
+    c.arcTo(x, y, x + w, y, r);
+    c.closePath();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Prerendered textures (eenmalig, offscreen) — rijke detail zonder framekosten
+  // ---------------------------------------------------------------------------
+  function makeCausticTile(size, cells, seedRot) {
+    const c = document.createElement("canvas");
+    c.width = c.height = size;
+    const g = c.getContext("2d");
+    g.strokeStyle = "rgba(255,255,255,.5)";
+    g.shadowColor = "rgba(255,255,255,.9)";
+    g.shadowBlur = 7;
+    for (let i = 0; i < cells; i++) {
+      const cx = rnd(0, size), cy = rnd(0, size);
+      const rx = rnd(size * 0.07, size * 0.2), ry = rx * rnd(0.55, 0.95);
+      const rot = rnd(0, TAU) + seedRot;
+      g.lineWidth = rnd(2.5, 5.5);
+      // teken op 9 wrap-offsets zodat de tile naadloos herhaalt
+      for (const ox of [-size, 0, size]) for (const oy of [-size, 0, size]) {
+        g.beginPath();
+        g.ellipse(cx + ox, cy + oy, rx, ry, rot, 0, TAU);
+        g.stroke();
+      }
+    }
+    return c;
+  }
+  const causticA = makeCausticTile(256, 20, 0);
+  const causticB = makeCausticTile(340, 16, 1.2);
+  const patA = ctx.createPattern(causticA, "repeat");
+  const patB = ctx.createPattern(causticB, "repeat");
+
+  function makeNoiseTile(size) {              // filmkorrel
+    const c = document.createElement("canvas");
+    c.width = c.height = size;
+    const g = c.getContext("2d");
+    const img = g.createImageData(size, size);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = (Math.random() * 255) | 0;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = 22;
+    }
+    g.putImageData(img, 0, 0);
+    return c;
+  }
+  const noiseTile = makeNoiseTile(128);
+  const patNoise = ctx.createPattern(noiseTile, "repeat");
+
+  // rots-textuur per rots: silhouet + gradient + spikkels + richels + toplicht
+  function makeRockTex(o) {
+    const r = o.r, pad = 1.5, d = Math.ceil(r * 2 * pad);
+    const c = document.createElement("canvas");
+    c.width = c.height = d;
+    const g = c.getContext("2d");
+    g.translate(d / 2, d / 2);
+    const n = o.shape.length;
+    const path = () => {
+      g.beginPath();
+      for (let k = 0; k <= n; k++) {
+        const a = (k % n) / n * TAU, rad = r * o.shape[k % n];
+        const px = Math.cos(a) * rad, py = Math.sin(a) * rad;
+        k === 0 ? g.moveTo(px, py) : g.lineTo(px, py);
+      }
+      g.closePath();
+    };
+    const warm = o.tint >= 0.5;
+    const grad = g.createLinearGradient(-r * 0.6, -r, r * 0.4, r);
+    if (warm) { grad.addColorStop(0, "#7d7462"); grad.addColorStop(0.55, "#5f5847"); grad.addColorStop(1, "#3a352b"); }
+    else      { grad.addColorStop(0, "#75879a"); grad.addColorStop(0.55, "#566879"); grad.addColorStop(1, "#33404d"); }
+    path(); g.fillStyle = grad; g.fill();
+    g.save(); path(); g.clip();
+    // mineraal-spikkels
+    for (let i = 0; i < 70; i++) {
+      const a = rnd(0, TAU), dd = rnd(0, r * 0.95);
+      g.fillStyle = Math.random() < 0.5 ? "rgba(0,0,0,.14)" : "rgba(255,255,255,.10)";
+      g.beginPath(); g.arc(Math.cos(a) * dd, Math.sin(a) * dd, rnd(0.8, 2.4), 0, TAU); g.fill();
+    }
+    // richels/scheuren
+    g.strokeStyle = "rgba(0,0,0,.22)"; g.lineWidth = 1.6;
+    for (let i = 0; i < 3; i++) {
+      let px = rnd(-r * 0.6, r * 0.2), py = rnd(-r * 0.6, r * 0.6);
+      g.beginPath(); g.moveTo(px, py);
+      for (let s = 0; s < 4; s++) { px += rnd(r * 0.08, r * 0.3); py += rnd(-r * 0.18, r * 0.22); g.lineTo(px, py); }
+      g.stroke();
+    }
+    // donkere vlekken (uit level-seed)
+    g.fillStyle = "rgba(0,0,0,.18)";
+    for (const sp of o.spots) { g.beginPath(); g.arc(Math.cos(sp.a) * r * sp.d, Math.sin(sp.a) * r * sp.d, r * sp.s, 0, TAU); g.fill(); }
+    // kernschaduw onder, toplicht boven (lichtbron = boven)
+    g.fillStyle = "rgba(0,0,10,.32)";
+    g.beginPath(); g.ellipse(0, r * 0.38, r * 0.62, r * 0.42, 0, 0, TAU); g.fill();
+    const tl = g.createRadialGradient(-r * 0.2, -r * 0.55, 0, -r * 0.2, -r * 0.55, r * 0.9);
+    tl.addColorStop(0, "rgba(210,235,255,.30)"); tl.addColorStop(1, "rgba(210,235,255,0)");
+    g.fillStyle = tl;
+    g.beginPath(); g.ellipse(-r * 0.15, -r * 0.4, r * 0.7, r * 0.5, 0, 0, TAU); g.fill();
+    g.restore();
+    // heldere rand-contour zodat de rots ook in diep water loskomt van de achtergrond
+    path(); g.lineWidth = 2.5; g.strokeStyle = "rgba(165,200,230,.5)"; g.stroke();
+    return c;
   }
 
   // ---------------------------------------------------------------------------
@@ -145,22 +230,57 @@ window.onerror = function (msg, src, line, col) {
   // ---------------------------------------------------------------------------
   let state = "title";   // title | play | winning | win | lose
   let world = { h: VH * CFG.levelsTall }, camY = 0;   // defaults zodat de titel-achtergrond werkt
-  let player, predator, caught, nets, obstacles, bubbles, plankton, bgWeeds, fgBokeh;
+  let player, predator, caught, nets, obstacles, bubbles;
+  let plankton = [], bgWeeds = [], fgBokeh = [], schools = [], bgRocks = [];
+  let particles = [], floaters = [], trail = [];
   let score, hearts, time = 0, banner, bannerT, winT;
   let depthTop = 0;          // 0 oppervlak .. 1 diep (gedeeld door achtergrond/sfeer)
   let shake = 0, hitFlash = 0;
 
-  const rnd = (a, b) => a + Math.random() * (b - a);
+  // sfeer-lagen (ook op de titel zichtbaar; startGame ververst ze voor het level)
+  function initAmbient(worldH) {
+    plankton = [];
+    for (let i = 0; i < 70; i++) {
+      plankton.push({ x: rnd(0, VW), y: rnd(0, VH), r: rnd(0.6, 2.2), spd: rnd(4, 14), amp: rnd(4, 14), ph: rnd(0, TAU) });
+    }
+    bgWeeds = [];
+    for (let i = 0; i < Math.round(CFG.levelsTall * 3.2); i++) {
+      bgWeeds.push({ x: rnd(-10, VW + 10), y: rnd(0, worldH), h: rnd(60, 150), w: rnd(8, 18), ph: rnd(0, TAU) });
+    }
+    // verre rots-silhouetten (traagste parallax-laag)
+    bgRocks = [];
+    for (let i = 0; i < Math.round(CFG.levelsTall * 1.8); i++) {
+      const shape = [];
+      for (let k = 0; k < 9; k++) shape.push(0.7 + rnd(0, 0.5));
+      bgRocks.push({ x: Math.random() < 0.5 ? rnd(-40, VW * 0.3) : rnd(VW * 0.7, VW + 40),
+        y: rnd(0, worldH), r: rnd(55, 130), shape });
+    }
+    // scholen kleine visjes op de achtergrond (ambient leven, geen gameplay)
+    schools = [];
+    for (let i = 0; i < Math.round(CFG.levelsTall * 1.5); i++) {
+      const n = 5 + (Math.random() * 5 | 0), offs = [];
+      for (let k = 0; k < n; k++) offs.push({ dx: rnd(0, 90), dy: rnd(-26, 26), ph: rnd(0, TAU), s: rnd(0.75, 1.25) });
+      schools.push({ y: rnd(0, worldH), dir: Math.random() < 0.5 ? 1 : -1,
+        speed: rnd(18, 42), size: rnd(4, 6.5), offs, x0: rnd(0, VW + 200) });
+    }
+    // voorgrond-bokeh: grote onscherpe deeltjes dicht bij de "lens" -> diepte
+    fgBokeh = [];
+    for (let i = 0; i < 9; i++) {
+      fgBokeh.push({ x: rnd(0, VW), y: rnd(0, VH), r: rnd(22, 55), spd: rnd(10, 26), ph: rnd(0, TAU), a: rnd(0.04, 0.10) });
+    }
+  }
+  initAmbient(world.h);
 
   function makePredator(tier, y) {
     const p = CFG.predators[Math.min(tier, CFG.predators.length - 1)];
-    return { tier, y, x: player.x, vis: p, wob: 0 };
+    return { tier, y, x: player.x, vis: p, wob: 0, bub: 0 };
   }
 
   function startGame() {
     const worldH = VH * CFG.levelsTall;
     world = { h: worldH };
-    player = { x: VW / 2, y: worldH - 70, vx: 0, vy: 0, hx: 0, hy: -1, r: CFG.playerR, inNet: false, invuln: 0 };
+    player = { x: VW / 2, y: worldH - 70, vx: 0, vy: 0, hx: 0, hy: -1, r: CFG.playerR,
+      inNet: false, invuln: 0, stretch: 0, bub: 0 };
     hearts = CFG.hearts;
     score = 0; time = 0; winT = 0;
     banner = ""; bannerT = 0;
@@ -175,19 +295,19 @@ window.onerror = function (msg, src, line, col) {
     // obstakels verspreid over het level (niet te dicht bij netten/start)
     obstacles = [];
     const nearNet = (y) => nets.some((n) => Math.abs(n.y - y) < 70);
-    const jellyCols = ["#b06fe0", "#7d8cff", "#5fd8e0", "#9a6ff0"];   // koele familie; alleen Roef is warm
-    for (let i = 0; i < Math.round(CFG.levelsTall * 10.4); i++) {   // dichtheid gelijk bij hoger level
+    const jellyCols = [[176,111,224], [125,140,255], [95,216,224], [154,111,240]];   // koele familie; alleen Roef is warm
+    for (let i = 0; i < Math.round(CFG.levelsTall * 10.4); i++) {
       const y = rnd(160, worldH - 220);
       if (nearNet(y)) continue;
       const zone = y / worldH;        // 0 = oppervlak (boven) .. 1 = diep (onder)
-      const rr = Math.random();
+      const rr2 = Math.random();
       // kwallen overal; rotsen overal; per zone een eigen vijand
       let type;
-      if (rr < 0.34) type = "jelly";
-      else if (rr < 0.56) type = "rock";
+      if (rr2 < 0.34) type = "jelly";
+      else if (rr2 < 0.56) type = "rock";
       else type = zone < 0.34 ? "urchin" : zone < 0.67 ? "puffer" : "angler";
 
-      const o = { type, x: rnd(34, VW - 34), y, ph: rnd(0, 6.28),
+      const o = { type, x: rnd(34, VW - 34), y, ph: rnd(0, TAU),
         dir: (Math.random() < 0.5 ? 0 : Math.PI) + rnd(-0.4, 0.4) };
       if (type === "rock") {
         o.r = rnd(20, 40);
@@ -195,17 +315,18 @@ window.onerror = function (msg, src, line, col) {
         for (let k = 0; k < 11; k++) o.shape.push(0.78 + rnd(0, 0.34));
         o.tint = rnd(0, 1);
         o.spots = [];
-        for (let k = 0; k < 4; k++) o.spots.push({ a: rnd(0, 6.28), d: rnd(0.2, 0.7), s: rnd(0.12, 0.26) });
+        for (let k = 0; k < 4; k++) o.spots.push({ a: rnd(0, TAU), d: rnd(0.2, 0.7), s: rnd(0.12, 0.26) });
         o.weed = Math.random() < 0.55;
+        o.tex = makeRockTex(o);                    // eenmalig prerenderen
       } else if (type === "jelly") {
         o.r = rnd(17, 26); o.col = jellyCols[(Math.random() * jellyCols.length) | 0];
         o.pulse = rnd(2.4, 3.8); o.speed = rnd(30, 65);
-      } else if (type === "urchin") {            // zee-egel (boven): stekelbal, bijna stil
+      } else if (type === "urchin") {              // zee-egel (boven): stekelbal, bijna stil
         o.r = rnd(16, 23); o.spin = (Math.random() < 0.5 ? -1 : 1) * rnd(0.2, 0.5);
         o.spikes = 11 + (Math.random() * 4 | 0);
-      } else if (type === "puffer") {            // kogelvis (midden): blaast zich op
+      } else if (type === "puffer") {              // kogelvis (midden): blaast zich op
         o.r = rnd(16, 22); o.pulse = rnd(1.1, 1.9); o.speed = rnd(14, 34); o.inf = 0;
-      } else {                                   // angler/lampvis (diep): gloeiend loklampje
+      } else {                                     // angler/lampvis (diep): gloeiend loklampje
         o.r = rnd(22, 30); o.pulse = rnd(2, 3.5); o.speed = rnd(16, 36);
       }
       obstacles.push(o);
@@ -215,24 +336,11 @@ window.onerror = function (msg, src, line, col) {
     bubbles = [];
     for (let i = 0; i < Math.round(CFG.levelsTall * 12); i++) {
       bubbles.push({ x: rnd(20, VW - 20), y: rnd(120, worldH - 120), r: rnd(5, 9), got: false,
-        vy: rnd(18, 40), ph: rnd(0, 6.28), wspd: rnd(1.5, 3) });
+        vy: rnd(18, 40), ph: rnd(0, TAU), wspd: rnd(1.5, 3) });
     }
 
-    // zwevend plankton (scherm-ruimte, parallax + drift) en verre wier-silhouetten (parallax)
-    plankton = [];
-    for (let i = 0; i < 70; i++) {
-      plankton.push({ x: rnd(0, VW), y: rnd(0, VH), r: rnd(0.6, 2.2), spd: rnd(4, 14), amp: rnd(4, 14), ph: rnd(0, 6.28) });
-    }
-    bgWeeds = [];
-    for (let i = 0; i < Math.round(CFG.levelsTall * 3.2); i++) {
-      bgWeeds.push({ x: rnd(-10, VW + 10), y: rnd(0, worldH), h: rnd(60, 150), w: rnd(8, 18), ph: rnd(0, 6.28), edge: Math.random() < 0.5 });
-    }
-    // voorgrond-bokeh: grote onscherpe deeltjes dicht bij de "lens" -> diepte
-    fgBokeh = [];
-    for (let i = 0; i < 9; i++) {
-      fgBokeh.push({ x: rnd(0, VW), y: rnd(0, VH), r: rnd(22, 55), spd: rnd(10, 26), ph: rnd(0, 6.28), a: rnd(0.04, 0.10) });
-    }
-
+    initAmbient(worldH);
+    particles = []; floaters = []; trail = [];
     shake = 0; hitFlash = 0;
     caught = [];   // monstervissen die in een net vast zitten
     predator = makePredator(0, player.y + VH * 0.85);
@@ -243,13 +351,44 @@ window.onerror = function (msg, src, line, col) {
 
   function resetToTitle() { state = "title"; }
   function flash(msg) { banner = msg; bannerT = 2.2; }
-  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+
+  // ---------------------------------------------------------------------------
+  // Particles / VFX (wereld-coördinaten; getekend met camera-offset)
+  // ---------------------------------------------------------------------------
+  function addP(p) {
+    if (particles.length > 380) particles.shift();
+    p.t = 0;
+    particles.push(p);
+  }
+  // burst van gloeiende stipjes
+  function burst(x, y, n, col, spd, life, up) {
+    for (let i = 0; i < n; i++) {
+      const a = rnd(0, TAU), v = rnd(spd * 0.3, spd);
+      addP({ kind: "dot", x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (up || 0),
+        r: rnd(1.2, 3), life: rnd(life * 0.6, life), col, add: true });
+    }
+  }
+  // expanderende ring (pick-up/impact)
+  function ring(x, y, r, col) {
+    addP({ kind: "ring", x, y, vx: 0, vy: 0, r, grow: 90, life: 0.45, col, add: true });
+  }
+  // klein bubbeltje (zwem-spoor, bek van de jager)
+  function bubbleP(x, y, r, vy) {
+    addP({ kind: "bub", x, y, vx: rnd(-6, 6), vy: -(vy || rnd(26, 44)), r: r || rnd(1.4, 3),
+      life: rnd(0.9, 1.6), ph: rnd(0, TAU) });
+  }
+  function floatTxt(x, y, txt) {
+    floaters.push({ x, y, txt, t: 0 });
+    if (floaters.length > 12) floaters.shift();
+  }
 
   function hurt(knockY) {
     if (player.invuln > 0) return;
     hearts--; player.invuln = CFG.invulnTime;
     player.y += knockY;                 // teruggeslagen naar beneden -> jager wint terrein
     shake = Math.max(shake, 7); hitFlash = 1;
+    burst(player.x, player.y, 14, "255,120,60", 170, 0.7);
+    burst(player.x, player.y, 6, "255,60,50", 110, 0.5);
     flash("Au! " + hearts + " ❤ over");
     if (hearts <= 0) { state = "lose"; shake = 16; }
   }
@@ -264,13 +403,35 @@ window.onerror = function (msg, src, line, col) {
     if (shake < 0.3) shake = 0;
     if (hitFlash > 0) hitFlash -= dt * 4;
     if (caught) for (const c of caught) { c.wob += dt * 6; if (c.thrash > 0) c.thrash *= Math.pow(0.5, dt); }
+
+    // particles/floaters/trail lopen ook door op win/lose (uitsterven ziet er goed uit)
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.t += dt;
+      if (p.t >= p.life) { particles.splice(i, 1); continue; }
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      const dr = Math.pow(0.4, dt);
+      p.vx *= dr; if (p.kind !== "bub") p.vy *= dr;
+    }
+    for (let i = floaters.length - 1; i >= 0; i--) {
+      const f = floaters[i];
+      f.t += dt; f.y -= 34 * dt;
+      if (f.t > 1) floaters.splice(i, 1);
+    }
+    for (let i = trail.length - 1; i >= 0; i--) {
+      trail[i].a -= dt * 2.4;
+      if (trail[i].a <= 0) trail.splice(i, 1);
+    }
+
     if (state !== "play" && state !== "winning") return;
 
     // --- speler ---
     if (state === "play") {
       // Veeg = duwtje: voeg snelheid toe in de veegrichting; Roef glijdt zelf door.
+      const impMag = Math.hypot(ptr.dx, ptr.dy) * CFG.impulse;
       player.vx += ptr.dx * CFG.impulse;
       player.vy += ptr.dy * CFG.impulse;
+      if (impMag > 60) player.stretch = clamp(player.stretch + impMag / 900, 0, 1); // squash & stretch
       ptr.dx = 0; ptr.dy = 0;
       player.vy += CFG.gravity * dt;                    // zachte zwaartekracht
       const sp = Math.hypot(player.vx, player.vy);      // snelheid begrenzen
@@ -280,6 +441,7 @@ window.onerror = function (msg, src, line, col) {
       player.y += player.vy * dt * slow;
       const fr = Math.pow(CFG.friction, dt * 60);        // demping (glijdt uit)
       player.vx *= fr; player.vy *= fr;
+      player.stretch *= Math.pow(0.03, dt);              // rek dooft snel uit
       // Roef draait naar zijn zwemrichting (vloeiend)
       const spd2 = Math.hypot(player.vx, player.vy);
       if (spd2 > 30) {
@@ -292,9 +454,24 @@ window.onerror = function (msg, src, line, col) {
       player.x = clamp(player.x, player.r, VW - player.r);
       player.y = clamp(player.y, 40, world.h - player.r);
       if (player.invuln > 0) player.invuln -= dt;
+
+      // motion-trail + bubbel-spoor uit de staart (schaal met snelheid)
+      if (spd2 > 90) {
+        trail.push({ x: player.x, y: player.y, r: player.r * 0.8, a: Math.min(0.5, spd2 / CFG.maxSpeed * 0.6) });
+        if (trail.length > 26) trail.shift();
+      }
+      player.bub += dt * (spd2 / CFG.maxSpeed) * 12;
+      while (player.bub > 1) {
+        player.bub -= 1;
+        bubbleP(player.x - player.hx * player.r * 1.4 + rnd(-4, 4),
+                player.y - player.hy * player.r * 1.4 + rnd(-4, 4));
+      }
     } else if (state === "winning") {
       player.y -= 260 * dt;               // triomfantelijk naar het oppervlak
       winT += dt;
+      trail.push({ x: player.x, y: player.y, r: player.r * 0.9, a: 0.55 });
+      if (trail.length > 26) trail.shift();
+      if (Math.random() < 0.5) bubbleP(player.x + rnd(-8, 8), player.y + player.r);
       if (winT > 1.6) { state = "win"; }
     }
 
@@ -307,6 +484,8 @@ window.onerror = function (msg, src, line, col) {
         // huidige jager komt vast te zitten in dit net en spartelt
         caught.push({ y: n.y, x: predator.x, vis: predator.vis, tier: predator.tier, wob: 0, thrash: 1.4 });
         shake = Math.max(shake, 10);
+        burst(player.x, n.y, 16, "225,245,255", 150, 0.7);
+        ring(player.x, n.y, 10, "225,245,255");
         if (n.final) {
           state = "winning"; winT = 0;
           flash("De grote vis zit vast in het net!");
@@ -325,6 +504,12 @@ window.onerror = function (msg, src, line, col) {
       predator.y -= sp * dt;                       // stijgt richting Roef
       predator.x += (player.x - predator.x) * Math.min(1, 1.6 * dt);
       predator.wob += dt * 6;
+      // bubbels uit de bek
+      predator.bub += dt * 2.5;
+      while (predator.bub > 1) {
+        predator.bub -= 1;
+        bubbleP(predator.x + rnd(-8, 8), predator.y - predator.vis.size * 0.9, rnd(1.6, 3.4));
+      }
       // botsing met Roef = einde
       if (Math.hypot(predator.x - player.x, predator.y - player.y) < predator.vis.size * 0.7 + player.r) {
         state = "lose"; shake = 16; flash("Gepakt!");
@@ -335,8 +520,8 @@ window.onerror = function (msg, src, line, col) {
     for (const o of obstacles) {
       if (o.type === "jelly") {
         // pulserende voortstuwing: sneller tijdens het samentrekken van de klok
-        const burst = Math.max(0, Math.sin(time * o.pulse + o.ph));
-        const v = o.speed * (0.3 + 1.1 * burst);
+        const burstK = Math.max(0, Math.sin(time * o.pulse + o.ph));
+        const v = o.speed * (0.3 + 1.1 * burstK);
         o.x += Math.cos(o.dir) * v * dt;
         o.y += Math.sin(o.dir) * v * dt * 0.5;
         if (o.x < o.r) { o.x = o.r; o.dir = Math.PI - o.dir; }
@@ -364,7 +549,13 @@ window.onerror = function (msg, src, line, col) {
             player.x = clamp(o.x + nx * minD, player.r, VW - player.r);
             player.y = o.y + ny * minD;
             const vn = player.vx * nx + player.vy * ny;
-            if (vn < 0) { player.vx -= vn * nx; player.vy -= vn * ny; if (vn < -150) shake = Math.max(shake, 4); }
+            if (vn < 0) {
+              player.vx -= vn * nx; player.vy -= vn * ny;
+              if (vn < -150) {                                  // zand-plofje bij een flinke bots
+                shake = Math.max(shake, 4);
+                burst(player.x, player.y, 8, "205,190,150", 80, 0.6);
+              }
+            }
           } else if (player.invuln <= 0) {
             // kwal / zee-egel / kogelvis / lampvis = prik: levensverlies + terugslag
             player.x = clamp(player.x + nx * 14, player.r, VW - player.r);
@@ -379,7 +570,12 @@ window.onerror = function (msg, src, line, col) {
       if (b.got) continue;
       b.y -= b.vy * dt;                                  // stijgt
       if (b.y < 20) { b.y = world.h - 20; b.x = rnd(20, VW - 20); }
-      if (Math.hypot(b.x - player.x, b.y - player.y) < b.r + player.r + 4) { b.got = true; score++; }
+      if (Math.hypot(b.x - player.x, b.y - player.y) < b.r + player.r + 4) {
+        b.got = true; score++;
+        ring(b.x, b.y, b.r, "170,235,255");
+        burst(b.x, b.y, 7, "190,240,255", 90, 0.5, 30);
+        floatTxt(b.x, b.y - 12, "+1");
+      }
     }
 
     // --- camera (volgt Roef, niet terug naar beneden) ---
@@ -396,8 +592,8 @@ window.onerror = function (msg, src, line, col) {
   // ---------------------------------------------------------------------------
   const S = (wy) => wy - camY;   // wereld-y -> scherm-y
 
-  // diepte-palet: turquoise -> kobalt -> inktpaars -> afgrond (meerpunts-lerp)
-  const ANCHORS = [[0, [40, 150, 180]], [0.4, [16, 84, 128]], [0.72, [20, 42, 84]], [1, [4, 14, 26]]];
+  // diepte-palet: tropisch turquoise -> kobalt -> inktblauw -> afgrond
+  const ANCHORS = [[0, [58, 172, 200]], [0.35, [20, 100, 148]], [0.62, [14, 48, 96]], [0.85, [8, 22, 50]], [1, [3, 8, 18]]];
   function depthColor(t) {
     t = clamp(t, 0, 1);
     for (let i = 1; i < ANCHORS.length; i++) {
@@ -406,7 +602,7 @@ window.onerror = function (msg, src, line, col) {
         return `rgb(${Math.round(a[1][0] + (b[1][0] - a[1][0]) * f)},${Math.round(a[1][1] + (b[1][1] - a[1][1]) * f)},${Math.round(a[1][2] + (b[1][2] - a[1][2]) * f)})`;
       }
     }
-    return "rgb(4,14,26)";
+    return "rgb(3,8,18)";
   }
 
   function drawWater() {
@@ -418,54 +614,107 @@ window.onerror = function (msg, src, line, col) {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, VW, VH);
 
-    // geanimeerde godrays (additief, wiegen, doven uit in de diepte)
-    const rayA = 0.05 * (1 - depthTop);
-    if (rayA > 0.003) {
+    const bright = Math.pow(1 - depthTop, 1.6);          // hoeveel zonlicht hier nog komt
+
+    // zon-gloed hoog in het water
+    if (bright > 0.1) {
+      const sunX = VW * 0.38 + Math.sin(time * 0.1) * 24;
+      const sg = ctx.createRadialGradient(sunX, -VH * 0.15, 0, sunX, -VH * 0.15, VH * 0.85);
+      sg.addColorStop(0, `rgba(190,235,255,${(0.28 * bright).toFixed(3)})`);
+      sg.addColorStop(1, "rgba(190,235,255,0)");
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = sg; ctx.fillRect(0, 0, VW, VH);
+      ctx.restore();
+    }
+
+    // geanimeerde godrays vanuit een zon-punt (additief, wiegen, doven in de diepte)
+    if (bright > 0.03) {
+      const sunX = VW * 0.38 + Math.sin(time * 0.1) * 24, sunY = -VH * 0.18;
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
-      for (let i = 0; i < 6; i++) {
-        const x = (i + 0.5) * VW / 6 + Math.sin(time * 0.25 + i * 1.7) * 26;
-        const w = VW * 0.16;
-        const rg = ctx.createLinearGradient(0, 0, 0, VH);
-        rg.addColorStop(0, `rgba(200,240,255,${rayA})`);
-        rg.addColorStop(1, "rgba(200,240,255,0)");
+      for (let i = 0; i < 7; i++) {
+        const a = Math.PI / 2 + (i - 3) * 0.16 + Math.sin(time * 0.22 + i * 1.9) * 0.05;
+        const rayA = (0.035 + 0.022 * Math.sin(time * 0.5 + i * 2.1)) * bright;
+        if (rayA <= 0.004) continue;
+        const len = VH * 1.5, w0 = 8, w1 = 70 + (i % 3) * 26;
+        const dx = Math.cos(a), dy = Math.sin(a);
+        const px = -dy, py = dx;
+        const rg = ctx.createLinearGradient(sunX, sunY, sunX + dx * len, sunY + dy * len);
+        rg.addColorStop(0, `rgba(205,240,255,${rayA.toFixed(3)})`);
+        rg.addColorStop(1, "rgba(205,240,255,0)");
         ctx.fillStyle = rg;
         ctx.beginPath();
-        ctx.moveTo(x - w * 0.3, 0); ctx.lineTo(x + w * 0.3, 0);
-        ctx.lineTo(x + w, VH); ctx.lineTo(x - w, VH); ctx.closePath(); ctx.fill();
+        ctx.moveTo(sunX - px * w0, sunY - py * w0);
+        ctx.lineTo(sunX + px * w0, sunY + py * w0);
+        ctx.lineTo(sunX + dx * len + px * w1, sunY + dy * len + py * w1);
+        ctx.lineTo(sunX + dx * len - px * w1, sunY + dy * len - py * w1);
+        ctx.closePath(); ctx.fill();
       }
+      ctx.restore();
+    }
+
+    // caustics: twee naadloze licht-web-tiles die tegengesteld drijven (ondiep water)
+    if (depthTop < 0.4) {
+      const ca = 0.10 * (1 - depthTop / 0.4);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = ca;
+      let ox = (time * 9) % 256, oy = (camY * 0.25 + time * 5) % 256;
+      ctx.translate(-ox, -oy);
+      ctx.fillStyle = patA;
+      ctx.fillRect(ox - 256, oy - 256, VW + 512, VH + 512);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.globalAlpha = ca * 0.7;
+      ox = 340 - ((time * 13) % 340); oy = (camY * 0.25 - time * 4) % 340;
+      ctx.translate(-ox, -oy);
+      ctx.fillStyle = patB;
+      ctx.fillRect(ox - 340, oy - 340, VW + 680, VH + 680);
       ctx.restore();
     }
 
     // oppervlak: golvende shimmer-band als het in beeld is
     const surfY = S(0);
-    if (surfY > -40 && surfY < VH) {
-      ctx.fillStyle = "rgba(150,225,255,.22)";
-      ctx.beginPath();
-      ctx.moveTo(0, surfY);
-      for (let x = 0; x <= VW; x += 18) ctx.lineTo(x, surfY - 6 + Math.sin(x * 0.05 + time * 2) * 4);
-      ctx.lineTo(VW, 0); ctx.lineTo(0, 0); ctx.closePath(); ctx.fill();
-    }
-    // caustics-net in de ondiepe bovenlaag
-    if (depthTop < 0.35) {
+    if (surfY > -60 && surfY < VH) {
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
-      const ca = 0.055 * (1 - depthTop / 0.35);
-      ctx.strokeStyle = `rgba(180,235,255,${ca})`; ctx.lineWidth = 2;
-      for (let j = 0; j < 3; j++) {
-        ctx.beginPath();
-        for (let x = 0; x <= VW; x += 12) {
-          const yy = (j + 1) * VH * 0.12 + Math.sin(x * 0.04 + time * 1.5 + j) * 10;
-          x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
-        }
-        ctx.stroke();
+      const wg = ctx.createLinearGradient(0, surfY - 10, 0, surfY + 46);
+      wg.addColorStop(0, "rgba(200,245,255,.5)");
+      wg.addColorStop(1, "rgba(200,245,255,0)");
+      ctx.fillStyle = wg;
+      ctx.beginPath();
+      ctx.moveTo(0, surfY);
+      for (let x = 0; x <= VW; x += 14) ctx.lineTo(x, surfY - 6 + Math.sin(x * 0.05 + time * 2) * 4 + Math.sin(x * 0.11 - time * 3.1) * 2);
+      ctx.lineTo(VW, surfY + 46); ctx.lineTo(0, surfY + 46); ctx.closePath(); ctx.fill();
+      // dunne heldere waterlijn
+      ctx.strokeStyle = "rgba(235,255,255,.85)"; ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let x = 0; x <= VW; x += 10) {
+        const yy = surfY - 6 + Math.sin(x * 0.05 + time * 2) * 4 + Math.sin(x * 0.11 - time * 3.1) * 2;
+        x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
       }
+      ctx.stroke();
       ctx.restore();
     }
   }
 
-  // verre wier-silhouetten (trage parallax) — achtergrond-diepte
+  // verre parallax: rots-silhouetten (0.25x) + wier-silhouetten (0.4x) + vis-scholen
   function drawBackdrop() {
+    // verre rotsen
+    ctx.fillStyle = "rgba(8,24,40,.5)";
+    for (const b of bgRocks) {
+      const sy = b.y - camY * 0.25;
+      const yy = ((sy % world.h) + world.h) % world.h;
+      if (yy > VH + b.r || yy < -b.r) continue;
+      ctx.beginPath();
+      const n = b.shape.length;
+      for (let k = 0; k <= n; k++) {
+        const a = (k % n) / n * TAU, rad = b.r * b.shape[k % n];
+        const px = b.x + Math.cos(a) * rad, py = yy + Math.sin(a) * rad * 0.7;
+        k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath(); ctx.fill();
+    }
+    // wier
     ctx.fillStyle = "rgba(10,30,46,.55)";
     for (const w of bgWeeds) {
       const sy = w.y - camY * 0.4;
@@ -478,6 +727,25 @@ window.onerror = function (msg, src, line, col) {
       ctx.quadraticCurveTo(w.x + w.w / 2 + Math.sin(time + w.ph) * 14, base - w.h * 0.6, w.x + w.w / 2, base);
       ctx.closePath(); ctx.fill();
     }
+    // scholen visjes (silhouet, ambient leven)
+    ctx.fillStyle = "rgba(150,200,225,.32)";
+    for (const s of schools) {
+      const sy = s.y - camY * 0.55;
+      const yy = ((sy % world.h) + world.h) % world.h;
+      if (yy > VH + 40 || yy < -40) continue;
+      const span = VW + 240;
+      const sx = ((s.x0 + time * s.speed * s.dir) % span + span) % span - 120;
+      for (const f of s.offs) {
+        const fx = sx + f.dx * s.dir, fy = yy + f.dy + Math.sin(time * 2 + f.ph) * 4;
+        const sz = s.size * f.s;
+        ctx.beginPath();
+        ctx.ellipse(fx, fy, sz, sz * 0.42, 0, 0, TAU);
+        ctx.moveTo(fx - sz * s.dir, fy);
+        ctx.lineTo(fx - sz * 1.8 * s.dir, fy - sz * 0.5);
+        ctx.lineTo(fx - sz * 1.8 * s.dir, fy + sz * 0.5);
+        ctx.closePath(); ctx.fill();
+      }
+    }
   }
 
   // zwevend plankton (additieve stipjes die opstijgen en wiegen)
@@ -489,7 +757,7 @@ window.onerror = function (msg, src, line, col) {
     for (const p of plankton) {
       const py = (((p.y - time * p.spd - camY * 0.2) % VH) + VH) % VH;
       const px = p.x + Math.sin(time * 0.6 + p.ph) * p.amp;
-      ctx.beginPath(); ctx.arc(px, py, p.r, 0, 6.28); ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, p.r, 0, TAU); ctx.fill();
     }
     ctx.restore();
   }
@@ -511,22 +779,94 @@ window.onerror = function (msg, src, line, col) {
       g.addColorStop(0, `rgba(190,225,255,${f.a})`);
       g.addColorStop(1, "rgba(190,225,255,0)");
       ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(px, py, f.r, 0, 6.28); ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, f.r, 0, TAU); ctx.fill();
     }
     ctx.restore();
   }
 
-  // cinematisch edge-vignet (donkere hoeken, focus naar het midden)
+  // cinematisch edge-vignet + filmkorrel
   function drawVignette() {
-    const vg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.45, VW / 2, VH / 2, VH * 0.8);
+    const vg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.42, VW / 2, VH / 2, VH * 0.82);
     vg.addColorStop(0, "rgba(0,0,0,0)");
-    vg.addColorStop(1, "rgba(0,0,14,.34)");
+    vg.addColorStop(1, "rgba(0,0,14,.36)");
     ctx.fillStyle = vg; ctx.fillRect(0, 0, VW, VH);
+    // korrel: noise-pattern met random offset per frame
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    const ox = (Math.random() * 128) | 0, oy = (Math.random() * 128) | 0;
+    ctx.translate(-ox, -oy);
+    ctx.fillStyle = patNoise;
+    ctx.fillRect(ox, oy, VW, VH);
+    ctx.restore();
   }
 
-  // monstervis (predator + gevangen): dreigend silhouet, rim-light, gloeiende ogen
-  function predatorPath(cx, cy, s, wob, tier, thrash) {
-    thrash = thrash || 0;
+  // motion-trail achter Roef (zachte lichtstreep)
+  function drawTrail() {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const t of trail) {
+      const y = S(t.y);
+      if (y < -30 || y > VH + 30) continue;
+      const g = ctx.createRadialGradient(t.x, y, 0, t.x, y, t.r);
+      g.addColorStop(0, `rgba(255,190,120,${(t.a * 0.5).toFixed(3)})`);
+      g.addColorStop(1, "rgba(255,190,120,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(t.x, y, t.r, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawParticles() {
+    for (const p of particles) {
+      const y = S(p.y);
+      if (y < -40 || y > VH + 40) continue;
+      const k = 1 - p.t / p.life;
+      if (p.kind === "dot") {
+        ctx.save();
+        if (p.add) ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = `rgba(${p.col},${(k * 0.9).toFixed(3)})`;
+        ctx.beginPath(); ctx.arc(p.x, y, p.r * (0.5 + k * 0.5), 0, TAU); ctx.fill();
+        ctx.restore();
+      } else if (p.kind === "ring") {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.strokeStyle = `rgba(${p.col},${(k * 0.8).toFixed(3)})`;
+        ctx.lineWidth = 2.5 * k + 0.5;
+        ctx.beginPath(); ctx.arc(p.x, y, p.r + p.t * p.grow, 0, TAU); ctx.stroke();
+        ctx.restore();
+      } else if (p.kind === "bub") {
+        const px = p.x + Math.sin(time * 3 + p.ph) * 2;
+        ctx.strokeStyle = `rgba(220,250,255,${(k * 0.65).toFixed(3)})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(px, y, p.r, 0, TAU); ctx.stroke();
+        ctx.fillStyle = `rgba(255,255,255,${(k * 0.4).toFixed(3)})`;
+        ctx.beginPath(); ctx.arc(px - p.r * 0.3, y - p.r * 0.3, p.r * 0.3, 0, TAU); ctx.fill();
+      }
+    }
+  }
+
+  function drawFloaters() {
+    for (const f of floaters) {
+      const y = S(f.y);
+      const a = 1 - f.t;
+      ctx.save();
+      ctx.font = "bold 13px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillStyle = `rgba(6,20,32,${(a * 0.7).toFixed(3)})`;
+      ctx.fillText(f.txt, f.x + 1, y + 1);
+      ctx.fillStyle = `rgba(210,245,255,${a.toFixed(3)})`;
+      ctx.fillText(f.txt, f.x, y);
+      ctx.restore();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Personages
+  // ---------------------------------------------------------------------------
+  // monstervis (predator + gevangen): dreigend silhouet, vinnen, kieuwen,
+  // rim-light, gloeiende ogen, bek die opent naarmate hij dichterbij komt
+  function predatorPath(cx, cy, s, wob, tier, thrash, menace) {
+    thrash = thrash || 0; menace = menace || 0;
     const t = Math.min(tier || 0, 2);
     const bodies = [["#3e5a72", "#1f2c3c"], ["#5a3a72", "#1f1838"], ["#5a2a46", "#181222"]];
     const eyes = [["#ffe066", "#ffaa22"], ["#ffcc44", "#ff6622"], ["#ffdd55", "#ff2a16"]];
@@ -534,100 +874,208 @@ window.onerror = function (msg, src, line, col) {
     ctx.save();
     ctx.translate(cx + (thrash ? Math.sin(wob * 9) * s * 0.12 * thrash : 0), cy);
     ctx.rotate(Math.sin(wob * 2.5) * (0.08 + thrash * 0.5));
-    // staart
+    ctx.lineJoin = "round";
+    // staart (tweelobbige vin met gradient)
     const tw = Math.sin(wob * 3) * s * (0.25 + thrash * 0.5);
-    ctx.fillStyle = core;
+    const tg = ctx.createLinearGradient(0, s * 0.6, 0, s * 1.35);
+    tg.addColorStop(0, core); tg.addColorStop(1, rim);
+    ctx.fillStyle = tg;
     ctx.beginPath();
-    ctx.moveTo(0, s * 0.7); ctx.lineTo(-s * 0.6 + tw, s * 1.25); ctx.lineTo(s * 0.6 + tw, s * 1.25);
+    ctx.moveTo(0, s * 0.68);
+    ctx.quadraticCurveTo(-s * 0.2 + tw * 0.4, s * 1.0, -s * 0.62 + tw, s * 1.32);
+    ctx.quadraticCurveTo(-s * 0.05 + tw * 0.5, s * 1.12, tw * 0.3, s * 1.02);
+    ctx.quadraticCurveTo(s * 0.05 + tw * 0.5, s * 1.12, s * 0.62 + tw, s * 1.32);
+    ctx.quadraticCurveTo(s * 0.2 + tw * 0.4, s * 1.0, 0, s * 0.68);
     ctx.closePath(); ctx.fill();
+    // zijvinnen (zwiepen mee)
+    const finA = Math.sin(wob * 3 + 1.3) * 0.25;
+    ctx.fillStyle = core;
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(side * s * 0.55, s * 0.15);
+      ctx.rotate(side * (0.85 + finA));
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(side * s * 0.55, s * 0.28, side * s * 0.7, s * 0.75);
+      ctx.quadraticCurveTo(side * s * 0.18, s * 0.5, 0, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
     // lijf met radiale gradient (volume) + rim-light contour
     const bg = ctx.createRadialGradient(-s * 0.2, -s * 0.3, s * 0.1, 0, 0, s * 1.15);
     bg.addColorStop(0, rim); bg.addColorStop(1, core);
     ctx.fillStyle = bg;
-    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.62, s, 0, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.62, s, 0, 0, TAU); ctx.fill();
     ctx.lineWidth = Math.max(1.5, s * 0.06); ctx.strokeStyle = "rgba(170,205,235,.5)";
-    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.62, s, 0, 0, 6.28); ctx.stroke();
-    // bek + tanden (meer tanden per tier)
+    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.62, s, 0, 0, TAU); ctx.stroke();
+    // kieuwspleten
+    ctx.strokeStyle = "rgba(8,12,20,.55)"; ctx.lineWidth = Math.max(1.2, s * 0.05);
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(side * s * 0.34, -s * 0.05 + i * s * 0.16, s * 0.14, side < 0 ? 0.6 : Math.PI - 2.5, side < 0 ? 2.5 : Math.PI - 0.6);
+        ctx.stroke();
+      }
+    }
+    // littekens per tier (veteranen-look)
+    if (t >= 1) {
+      ctx.strokeStyle = "rgba(200,220,240,.35)"; ctx.lineWidth = Math.max(1, s * 0.04);
+      ctx.beginPath(); ctx.moveTo(-s * 0.28, s * 0.25); ctx.lineTo(-s * 0.05, s * 0.55); ctx.stroke();
+      if (t >= 2) { ctx.beginPath(); ctx.moveTo(s * 0.18, s * 0.1); ctx.lineTo(s * 0.4, s * 0.45); ctx.stroke(); }
+    }
+    // bek: opent verder naarmate de jager dichterbij komt (menace 0..1)
+    const jaw = s * (0.22 + 0.22 * menace) + Math.abs(Math.sin(wob)) * s * 0.1;
     ctx.fillStyle = "#070b11";
-    ctx.beginPath(); ctx.ellipse(0, -s * 0.78, s * 0.36, s * 0.26 + Math.abs(Math.sin(wob)) * s * 0.12, 0, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -s * 0.78, s * 0.38, jaw, 0, 0, TAU); ctx.fill();
+    // keel-gloed bij hoge dreiging
+    if (menace > 0.3) {
+      const gg = ctx.createRadialGradient(0, -s * 0.78, 0, 0, -s * 0.78, jaw);
+      gg.addColorStop(0, `rgba(180,20,20,${(0.5 * menace).toFixed(3)})`);
+      gg.addColorStop(1, "rgba(180,20,20,0)");
+      ctx.fillStyle = gg;
+      ctx.beginPath(); ctx.ellipse(0, -s * 0.78, s * 0.38, jaw, 0, 0, TAU); ctx.fill();
+    }
+    // tanden (meer per tier; onderrij verschijnt bij open bek)
     ctx.fillStyle = "#fff";
     const teeth = 3 + t;
     for (let i = 0; i < teeth; i++) {
       const tx = (-(teeth - 1) / 2 + i) * s * 0.17;
-      ctx.beginPath(); ctx.moveTo(tx, -s * 0.92); ctx.lineTo(tx - s * 0.05, -s * 0.74); ctx.lineTo(tx + s * 0.05, -s * 0.74); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(tx, -s * 0.78 - jaw); ctx.lineTo(tx - s * 0.05, -s * 0.78 - jaw + s * 0.18); ctx.lineTo(tx + s * 0.05, -s * 0.78 - jaw + s * 0.18); ctx.fill();
     }
-    // gloeiende ogen (pulserend) + verticale spleet-pupil
-    const pulse = 0.7 + 0.3 * Math.sin(time * 5 + wob);
+    if (menace > 0.35) {
+      for (let i = 0; i < teeth - 1; i++) {
+        const tx = (-(teeth - 2) / 2 + i) * s * 0.17;
+        ctx.beginPath(); ctx.moveTo(tx, -s * 0.78 + jaw); ctx.lineTo(tx - s * 0.045, -s * 0.78 + jaw - s * 0.15); ctx.lineTo(tx + s * 0.045, -s * 0.78 + jaw - s * 0.15); ctx.fill();
+      }
+    }
+    // gloeiende ogen (pulserend, feller bij dreiging) + verticale spleet-pupil
+    const pulse = 0.7 + 0.3 * Math.sin(time * (5 + menace * 4) + wob);
     for (const ex of [-s * 0.3, s * 0.3]) {
       const eg = ctx.createRadialGradient(ex, -s * 0.42, 0, ex, -s * 0.42, s * 0.32 * pulse);
       eg.addColorStop(0, eyes[t][0]); eg.addColorStop(0.5, eyes[t][1]); eg.addColorStop(1, "rgba(255,40,0,0)");
       ctx.fillStyle = eg;
-      ctx.beginPath(); ctx.arc(ex, -s * 0.42, s * 0.32 * pulse, 0, 6.28); ctx.fill();
+      ctx.beginPath(); ctx.arc(ex, -s * 0.42, s * 0.32 * pulse, 0, TAU); ctx.fill();
       ctx.fillStyle = "#0a0408";
-      ctx.beginPath(); ctx.ellipse(ex, -s * 0.42, s * 0.05, s * 0.14, 0, 0, 6.28); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(ex, -s * 0.42, s * 0.05, s * 0.14, 0, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Roef zelf (lokale coördinaten, neus omhoog) — volledig procedureel en levend:
+  // kwispelende staart, flutterende vinnen, squash & stretch, knipperende ogen
+  function drawRoefBody(s, spd, idle, stretch) {
+    const spdK = Math.min(1, spd / CFG.maxSpeed);
+    const wagF = 7 + spd * 0.016;
+    const wag = Math.sin(time * wagF) * s * (0.26 + spdK * 0.28);
+    ctx.lineJoin = "round";
+    ctx.save();
+    ctx.scale(1 - stretch * 0.16, 1 + stretch * 0.2);    // rek in zwemrichting
+
+    // staartvin (twee lobben, gradient)
+    const tg = ctx.createLinearGradient(0, s * 0.6, 0, s * 1.7);
+    tg.addColorStop(0, "#ff8a3d"); tg.addColorStop(1, "#e05a14");
+    ctx.fillStyle = tg;
+    ctx.strokeStyle = "#b34a12"; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(0, s * 0.62);
+    ctx.quadraticCurveTo(-s * 0.18 + wag * 0.3, s * 1.0, -s * 0.62 + wag, s * 1.55);
+    ctx.quadraticCurveTo(-s * 0.08 + wag * 0.5, s * 1.3, wag * 0.35, s * 1.16);
+    ctx.quadraticCurveTo(s * 0.08 + wag * 0.5, s * 1.3, s * 0.62 + wag, s * 1.55);
+    ctx.quadraticCurveTo(s * 0.18 + wag * 0.3, s * 1.0, 0, s * 0.62);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    // zijvinnen (flutteren mee met de slag)
+    const fin = Math.sin(time * (9 + spdK * 5)) * (0.28 + spdK * 0.2);
+    ctx.fillStyle = "#ffab6b";
+    ctx.strokeStyle = "#c65a1c"; ctx.lineWidth = 2;
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(side * s * 0.68, s * 0.12);
+      ctx.rotate(side * (0.7 + fin));
+      ctx.beginPath();
+      ctx.ellipse(side * s * 0.22, 0, s * 0.42, s * 0.19, 0, 0, TAU);
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+
+    // lijf (radiale gradient: warm hoogtepunt links-boven)
+    const bg = ctx.createRadialGradient(-s * 0.25, -s * 0.45, s * 0.12, 0, 0, s * 1.25);
+    bg.addColorStop(0, "#ffd9a0"); bg.addColorStop(0.55, "#ff8a3d"); bg.addColorStop(1, "#d95d15");
+    ctx.fillStyle = bg;
+    ctx.strokeStyle = "#b34a12"; ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.78, s * 1.02, 0, 0, TAU); ctx.fill(); ctx.stroke();
+
+    // buik
+    ctx.fillStyle = "rgba(255,231,200,.92)";
+    ctx.beginPath(); ctx.ellipse(0, s * 0.3, s * 0.46, s * 0.58, 0, 0, TAU); ctx.fill();
+    // schub-suggestie (subtiele boogjes)
+    ctx.strokeStyle = "rgba(179,74,18,.18)"; ctx.lineWidth = 1.4;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath(); ctx.arc(0, s * (0.05 + i * 0.24), s * 0.5, 0.35 * Math.PI, 0.65 * Math.PI); ctx.stroke();
+    }
+    // rim-light op de schouder (zonlicht van boven)
+    ctx.save();
+    ctx.scale(0.78, 1.02);
+    ctx.strokeStyle = "rgba(255,244,225,.6)"; ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(0, 0, s * 0.9, -2.35, -1.15); ctx.stroke();
+    ctx.restore();
+
+    // mondje ('o' — hij blaast bubbels op weg naar boven)
+    ctx.fillStyle = "#8a3d12";
+    ctx.beginPath(); ctx.arc(0, -s * 0.72, s * 0.1, 0, TAU); ctx.fill();
+    ctx.fillStyle = "rgba(255,200,160,.6)";
+    ctx.beginPath(); ctx.arc(0, -s * 0.75, s * 0.045, 0, TAU); ctx.fill();
+
+    // blosjes
+    ctx.fillStyle = "rgba(255,110,90,.28)";
+    for (const side of [-1, 1]) {
+      ctx.beginPath(); ctx.ellipse(side * s * 0.44, -s * 0.16, s * 0.14, s * 0.09, 0, 0, TAU); ctx.fill();
+    }
+
+    // ogen (met knipper + glinstering)
+    const blink = ((time * 0.9) % 3.7) < 0.11 ? 0.12 : 1;
+    for (const side of [-1, 1]) {
+      const ex = side * s * 0.3, ey = -s * 0.4;
+      ctx.fillStyle = "#fff";
+      ctx.strokeStyle = "rgba(179,74,18,.5)"; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.ellipse(ex, ey, s * 0.21, s * 0.24 * blink, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      if (blink > 0.5) {
+        ctx.fillStyle = "#1b2a33";
+        ctx.beginPath(); ctx.arc(ex + side * s * 0.02, ey - s * 0.05, s * 0.105, 0, TAU); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,.95)";
+        ctx.beginPath(); ctx.arc(ex - s * 0.05, ey - s * 0.1, s * 0.045, 0, TAU); ctx.fill();
+      }
     }
     ctx.restore();
   }
 
   function drawRoef() {
-    if (player.invuln > 0 && Math.floor(time * 12) % 2 === 0) return; // knipper bij i-frames
     const cx = player.x, cy = S(player.y), s = player.r;
     const spd = Math.hypot(player.vx, player.vy);
+    const flicker = player.invuln > 0 && Math.floor(time * 12) % 2 === 0;
 
     // warme gloed-halo: verankert Roef als enige warm-glanzende held
-    const halo = ctx.createRadialGradient(cx, cy, s * 0.4, cx, cy, s * 2.4);
-    halo.addColorStop(0, "rgba(255,150,60,.30)");
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const halo = ctx.createRadialGradient(cx, cy, s * 0.4, cx, cy, s * 2.6);
+    halo.addColorStop(0, "rgba(255,150,60,.26)");
     halo.addColorStop(1, "rgba(255,150,60,0)");
     ctx.fillStyle = halo;
-    ctx.beginPath(); ctx.arc(cx, cy, s * 2.4, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, s * 2.6, 0, TAU); ctx.fill();
+    ctx.restore();
 
     // platte schaduw eronder (diepte-leesbaarheid)
     ctx.fillStyle = "rgba(0,0,0,.18)";
-    ctx.beginPath(); ctx.ellipse(cx, cy + s * 1.3, s * 0.8, s * 0.28, 0, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx, cy + s * 1.3, s * 0.8, s * 0.28, 0, 0, TAU); ctx.fill();
 
     ctx.save();
+    if (flicker) ctx.globalAlpha = 0.35;               // i-frames: spookje i.p.v. weg
     ctx.translate(cx, cy);
     // idle-dobber bij lage snelheid
     const idle = 1 - Math.min(1, spd / 120);
     ctx.translate(0, Math.sin(time * 2) * s * 0.12 * idle);
     ctx.rotate(Math.atan2(player.hy, player.hx) + Math.PI / 2 + Math.sin(time * 1.6) * 0.05 * idle);
-    ctx.lineJoin = "round";
-    if (sprites.roef) {
-      // cartoon-sprite (neus omhoog); animatie = dobber + rotatie + glow eromheen
-      const W = s * 3, H = s * 3.9;
-      ctx.drawImage(sprites.roef, -W / 2, -H * 0.46, W, H);
-    } else {
-      // procedurele fallback (identiek aan voorheen)
-      // staart (kwispelt; sneller zwemmen = sneller kwispelen)
-      const wag = Math.sin(time * (8 + spd * 0.02)) * s * 0.35;
-      ctx.fillStyle = "#ff7a2f";
-      ctx.beginPath();
-      ctx.moveTo(0, s * 0.6);
-      ctx.lineTo(-s * 0.7 + wag, s * 1.25);
-      ctx.lineTo(s * 0.7 + wag, s * 1.25);
-      ctx.closePath(); ctx.fill();
-      // zijvinnen (flutteren mee tijdens het zwemmen)
-      const fin = Math.sin(time * 9) * 0.3;
-      ctx.fillStyle = "#ff9c5e";
-      ctx.beginPath(); ctx.ellipse(-s * 0.6, s * 0.1, s * 0.35, s * 0.18, 0.6 + fin, 0, 6.28); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(s * 0.6, s * 0.1, s * 0.35, s * 0.18, -0.6 - fin, 0, 6.28); ctx.fill();
-      // lijf met radiale gradient (volume) + lichte contour
-      const bg = ctx.createRadialGradient(-s * 0.25, -s * 0.35, s * 0.15, 0, 0, s * 1.15);
-      bg.addColorStop(0, "#ffb066"); bg.addColorStop(0.6, "#ff8a3d"); bg.addColorStop(1, "#e0641f");
-      ctx.fillStyle = bg;
-      ctx.beginPath(); ctx.ellipse(0, 0, s * 0.7, s, 0, 0, 6.28); ctx.fill();
-      ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(255,225,190,.6)";
-      ctx.beginPath(); ctx.ellipse(0, 0, s * 0.7, s, 0, 0, 6.28); ctx.stroke();
-      // lichte buik + buikschaduw onderaan
-      ctx.fillStyle = "#ffe1c0";
-      ctx.beginPath(); ctx.ellipse(0, s * 0.12, s * 0.4, s * 0.62, 0, 0, 6.28); ctx.fill();
-      ctx.fillStyle = "rgba(120,40,0,.12)";
-      ctx.beginPath(); ctx.ellipse(0, s * 0.55, s * 0.5, s * 0.35, 0, 0, 6.28); ctx.fill();
-      // oog
-      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(s * 0.28, -s * 0.45, s * 0.22, 0, 6.28); ctx.fill();
-      ctx.fillStyle = "#16242e"; ctx.beginPath(); ctx.arc(s * 0.33, -s * 0.45, s * 0.11, 0, 6.28); ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.beginPath(); ctx.arc(s * 0.26, -s * 0.5, s * 0.05, 0, 6.28); ctx.fill();
-    }
+    drawRoefBody(s, spd, idle, player.stretch || 0);
     ctx.restore();
   }
 
@@ -656,41 +1104,39 @@ window.onerror = function (msg, src, line, col) {
       for (let x = 0; x <= VW; x += 16) { const yy = y + off + sag(x); x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy); }
       ctx.stroke();
     }
+    // lopende glinstering over het touw (goud-net twinkelt extra)
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const nGl = n.final ? 4 : 2;
+    for (let i = 0; i < nGl; i++) {
+      const gx = ((time * 55 + i * VW / nGl) % (VW + 40)) - 20;
+      const gy = y - h / 2 + sag(gx);
+      const gp = 0.5 + 0.5 * Math.sin(time * 6 + i * 2.4);
+      const gg = ctx.createRadialGradient(gx, gy, 0, gx, gy, 8);
+      gg.addColorStop(0, n.final ? `rgba(255,235,170,${(0.8 * gp).toFixed(3)})` : `rgba(230,245,255,${(0.5 * gp).toFixed(3)})`);
+      gg.addColorStop(1, "rgba(255,235,170,0)");
+      ctx.fillStyle = gg;
+      ctx.beginPath(); ctx.arc(gx, gy, 8, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
     ctx.restore();
   }
 
   function drawObstacle(o) {
     const y = S(o.y);
-    if (y < -50 || y > VH + 50) return;
+    if (y < -60 || y > VH + 60) return;
     if (o.type === "rock") {
-      const r = o.r, n = o.shape.length;
-      ctx.save();
-      ctx.translate(o.x, y);
-      // onregelmatig silhouet
-      ctx.beginPath();
-      for (let k = 0; k <= n; k++) {
-        const a = (k % n) / n * 6.283, rad = r * o.shape[k % n];
-        const px = Math.cos(a) * rad, py = Math.sin(a) * rad;
-        k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      ctx.fillStyle = o.tint < 0.5 ? "#566879" : "#5f5847"; ctx.fill();
-      // heldere rand-contour zodat de rots ook in diep water loskomt van de achtergrond
-      ctx.lineWidth = 2.5; ctx.strokeStyle = "rgba(165,200,230,.5)"; ctx.stroke();
-      // kernschaduw onder, top-licht boven (lichtbron = boven)
-      ctx.fillStyle = "rgba(0,0,0,.30)";
-      ctx.beginPath(); ctx.ellipse(0, r * 0.34, r * 0.58, r * 0.4, 0, 0, 6.28); ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,.16)";
-      ctx.beginPath(); ctx.ellipse(-r * 0.15, -r * 0.42, r * 0.5, r * 0.3, 0, 0, 6.28); ctx.fill();
-      // vlekjes
-      ctx.fillStyle = "rgba(0,0,0,.18)";
-      for (const sp of o.spots) { ctx.beginPath(); ctx.arc(Math.cos(sp.a) * r * sp.d, Math.sin(sp.a) * r * sp.d, r * sp.s, 0, 6.28); ctx.fill(); }
-      ctx.restore();
-      // algen-rand bovenop (zodat de rots niet in het water wegvalt)
+      const d = o.tex.width;
+      ctx.drawImage(o.tex, o.x - d / 2, y - d / 2);
+      // algen-rand bovenop (geanimeerd, dus niet in de prerender)
       if (o.weed) {
-        ctx.strokeStyle = "#3a6b4a"; ctx.lineWidth = 3; ctx.lineCap = "round";
+        const r = o.r;
+        ctx.lineCap = "round";
         for (let k = -2; k <= 2; k++) {
           const bx = o.x + k * r * 0.28;
+          const wg = ctx.createLinearGradient(bx, y - r * 0.6, bx, y - r * 1.35);
+          wg.addColorStop(0, "#2e6b45"); wg.addColorStop(1, "#5cb87e");
+          ctx.strokeStyle = wg; ctx.lineWidth = 3;
           ctx.beginPath(); ctx.moveTo(bx, y - r * 0.7);
           ctx.quadraticCurveTo(bx + Math.sin(time * 2 + k) * 5, y - r, bx + Math.sin(time + k) * 4, y - r * 1.3);
           ctx.stroke();
@@ -708,43 +1154,63 @@ window.onerror = function (msg, src, line, col) {
     }
   }
 
-  // zee-egel (boven): draaiende stekelbal
+  // zee-egel (boven): draaiende stekelbal met gradient-stekels en gifgloed
   function drawUrchin(o, y) {
     const r = o.r;
     ctx.save();
     ctx.translate(o.x, y);
-    ctx.globalAlpha = 0.16; ctx.fillStyle = "#9a7fd0";
-    ctx.beginPath(); ctx.arc(0, 0, r * 1.3, 0, 6.28); ctx.fill();
-    ctx.globalAlpha = 1;
+    const gl = ctx.createRadialGradient(0, 0, r * 0.4, 0, 0, r * 1.5);
+    gl.addColorStop(0, "rgba(154,127,208,.25)"); gl.addColorStop(1, "rgba(154,127,208,0)");
+    ctx.fillStyle = gl;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.5, 0, TAU); ctx.fill();
     ctx.rotate(time * o.spin);
-    ctx.strokeStyle = "#221c34"; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.lineCap = "round";
     for (let i = 0; i < o.spikes; i++) {
-      const a = i / o.spikes * 6.283;
+      const a = i / o.spikes * TAU;
+      const sg = ctx.createLinearGradient(Math.cos(a) * r * 0.55, Math.sin(a) * r * 0.55, Math.cos(a) * r * 1.25, Math.sin(a) * r * 1.25);
+      sg.addColorStop(0, "#221c34"); sg.addColorStop(1, "#6a5a9a");
+      ctx.strokeStyle = sg; ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(Math.cos(a) * r * 0.55, Math.sin(a) * r * 0.55);
       ctx.lineTo(Math.cos(a) * r * 1.25, Math.sin(a) * r * 1.25);
       ctx.stroke();
     }
     ctx.lineCap = "butt";
-    ctx.fillStyle = "#3a3052";
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, 6.28); ctx.fill();
+    const bg = ctx.createRadialGradient(-r * 0.2, -r * 0.25, 0, 0, 0, r * 0.75);
+    bg.addColorStop(0, "#5a4a80"); bg.addColorStop(1, "#2b2342");
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, TAU); ctx.fill();
     ctx.strokeStyle = "rgba(175,155,215,.55)"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, 6.28); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, TAU); ctx.stroke();
     ctx.fillStyle = "rgba(190,205,235,.45)";
-    ctx.beginPath(); ctx.arc(-r * 0.2, -r * 0.2, r * 0.16, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.arc(-r * 0.2, -r * 0.2, r * 0.16, 0, TAU); ctx.fill();
     ctx.restore();
   }
 
   // kogelvis (midden): blaast zich op (stekels + grotere hitbox bij opblazen)
   function drawPuffer(o, y) {
     const inf = o.inf || 0, r = o.r * (0.7 + 0.6 * inf);
+    const faceR = Math.cos(o.dir) >= 0;
     ctx.save();
     ctx.translate(o.x, y);
+    // staartvinnetje
+    ctx.save();
+    ctx.scale(faceR ? 1 : -1, 1);
+    ctx.fillStyle = "#3d6a60";
+    const tw = Math.sin(time * 7 + o.ph) * r * 0.14;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.72, 0);
+    ctx.lineTo(-r * 1.12, -r * 0.32 + tw); ctx.lineTo(-r * 1.12, r * 0.32 + tw);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
     if (inf > 0.12) {
-      ctx.strokeStyle = "#3a6f6a"; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+      ctx.lineCap = "round";
       const n = 12;
       for (let i = 0; i < n; i++) {
-        const a = i / n * 6.283, ln = r * (0.92 + 0.3 * inf);
+        const a = i / n * TAU, ln = r * (0.92 + 0.3 * inf);
+        const sg = ctx.createLinearGradient(Math.cos(a) * r * 0.78, Math.sin(a) * r * 0.78, Math.cos(a) * ln, Math.sin(a) * ln);
+        sg.addColorStop(0, "#3a6f6a"); sg.addColorStop(1, "#cfe8dd");
+        ctx.strokeStyle = sg; ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.moveTo(Math.cos(a) * r * 0.78, Math.sin(a) * r * 0.78);
         ctx.lineTo(Math.cos(a) * ln, Math.sin(a) * ln);
@@ -752,17 +1218,26 @@ window.onerror = function (msg, src, line, col) {
       }
       ctx.lineCap = "butt";
     }
-    ctx.fillStyle = "#4f7d72";
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, 6.28); ctx.fill();
+    const bg = ctx.createRadialGradient(-r * 0.25, -r * 0.3, 0, 0, 0, r * 0.95);
+    bg.addColorStop(0, "#79a89a"); bg.addColorStop(0.6, "#4f7d72"); bg.addColorStop(1, "#37584f");
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, TAU); ctx.fill();
     ctx.strokeStyle = "rgba(170,225,215,.5)"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, 6.28); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, TAU); ctx.stroke();
     ctx.fillStyle = "rgba(220,240,235,.5)";
-    ctx.beginPath(); ctx.ellipse(0, r * 0.25, r * 0.5, r * 0.33, 0, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, r * 0.25, r * 0.5, r * 0.33, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = "rgba(255,255,255,.18)";
-    ctx.beginPath(); ctx.ellipse(-r * 0.25, -r * 0.3, r * 0.3, r * 0.2, 0, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-r * 0.25, -r * 0.3, r * 0.3, r * 0.2, 0, 0, TAU); ctx.fill();
+    // spikkeltjes
+    ctx.fillStyle = "rgba(20,45,40,.35)";
+    for (let i = 0; i < 5; i++) {
+      const a = o.ph + i * 1.25;
+      ctx.beginPath(); ctx.arc(Math.cos(a) * r * 0.45, Math.sin(a) * r * 0.4, r * 0.06, 0, TAU); ctx.fill();
+    }
     for (const ex of [-r * 0.28, r * 0.28]) {
-      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, -r * 0.22, r * 0.15, 0, 6.28); ctx.fill();
-      ctx.fillStyle = "#16242e"; ctx.beginPath(); ctx.arc(ex, -r * 0.22, r * 0.075, 0, 6.28); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, -r * 0.22, r * 0.16, 0, TAU); ctx.fill();
+      ctx.fillStyle = "#16242e"; ctx.beginPath(); ctx.arc(ex + (faceR ? r : -r) * 0.03, -r * 0.22, r * 0.08, 0, TAU); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.beginPath(); ctx.arc(ex - r * 0.05, -r * 0.27, r * 0.035, 0, TAU); ctx.fill();
     }
     ctx.strokeStyle = "#16242e"; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(0, r * 0.18, r * 0.16, 1.15 * Math.PI, 1.85 * Math.PI); ctx.stroke();
@@ -775,69 +1250,118 @@ window.onerror = function (msg, src, line, col) {
     ctx.save();
     ctx.translate(o.x, y);
     ctx.scale(faceR ? 1 : -1, 1);
-    // hengel + gloeiend (koel-bioluminescent) loklampje vóór de kop
+    // het loklampje verlicht de omgeving (groter effect in de diepte)
     const lx = r * 0.8, ly = -r * 0.95;
+    const lp = 0.6 + 0.4 * Math.sin(time * 4 + o.ph);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const env = ctx.createRadialGradient(lx, ly, 0, lx, ly, r * 2.6);
+    env.addColorStop(0, `rgba(127,255,212,${(0.16 * lp * (0.4 + depthTop)).toFixed(3)})`);
+    env.addColorStop(1, "rgba(127,255,212,0)");
+    ctx.fillStyle = env;
+    ctx.beginPath(); ctx.arc(lx, ly, r * 2.6, 0, TAU); ctx.fill();
+    ctx.restore();
+    // hengel + gloeiend (koel-bioluminescent) loklampje vóór de kop
     ctx.strokeStyle = "#39584f"; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(r * 0.2, -r * 0.55); ctx.quadraticCurveTo(r * 0.6, -r * 1.15, lx, ly); ctx.stroke();
-    const lp = 0.6 + 0.4 * Math.sin(time * 4 + o.ph);
     const lg = ctx.createRadialGradient(lx, ly, 0, lx, ly, r * 0.6 * lp);
     lg.addColorStop(0, "#e8fff6"); lg.addColorStop(0.4, "#7fffd4"); lg.addColorStop(1, "rgba(127,255,212,0)");
-    ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lx, ly, r * 0.6 * lp, 0, 6.28); ctx.fill();
-    ctx.fillStyle = "#eafff5"; ctx.beginPath(); ctx.arc(lx, ly, r * 0.13, 0, 6.28); ctx.fill();
+    ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lx, ly, r * 0.6 * lp, 0, TAU); ctx.fill();
+    ctx.fillStyle = "#eafff5"; ctx.beginPath(); ctx.arc(lx, ly, r * 0.13, 0, TAU); ctx.fill();
     // staart
     ctx.fillStyle = "#141d24";
     ctx.beginPath(); ctx.moveTo(-r * 0.85, 0); ctx.lineTo(-r * 1.3, -r * 0.45); ctx.lineTo(-r * 1.3, r * 0.45); ctx.closePath(); ctx.fill();
+    // rugvin-stekels
+    ctx.strokeStyle = "#1c2830"; ctx.lineWidth = 2; ctx.lineCap = "round";
+    for (let i = 0; i < 4; i++) {
+      const sx = -r * 0.55 + i * r * 0.28;
+      ctx.beginPath(); ctx.moveTo(sx, -r * 0.7); ctx.lineTo(sx - r * 0.08, -r * 1.05); ctx.stroke();
+    }
+    ctx.lineCap = "butt";
     // bol lijf
-    ctx.fillStyle = "#26333c";
-    ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.82, 0, 0, 6.28); ctx.fill();
+    const bg = ctx.createRadialGradient(-r * 0.25, -r * 0.35, 0, 0, 0, r * 1.15);
+    bg.addColorStop(0, "#33444f"); bg.addColorStop(1, "#1a252d");
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.82, 0, 0, TAU); ctx.fill();
     ctx.strokeStyle = "rgba(150,190,200,.45)"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.82, 0, 0, 6.28); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.82, 0, 0, TAU); ctx.stroke();
     ctx.fillStyle = "rgba(255,255,255,.07)";
-    ctx.beginPath(); ctx.ellipse(-r * 0.2, -r * 0.3, r * 0.5, r * 0.28, 0, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-r * 0.2, -r * 0.3, r * 0.5, r * 0.28, 0, 0, TAU); ctx.fill();
+    // fotoforen (lichtstipjes langs de flank)
+    ctx.fillStyle = `rgba(127,255,212,${(0.5 + 0.3 * Math.sin(time * 3 + o.ph)).toFixed(3)})`;
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath(); ctx.arc(-r * 0.6 + i * r * 0.28, r * 0.35, r * 0.045, 0, TAU); ctx.fill();
+    }
     // grote happende bek + tanden (vooraan)
     ctx.fillStyle = "#070b10";
-    ctx.beginPath(); ctx.ellipse(r * 0.5, r * 0.18, r * 0.5, r * 0.42, 0, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(r * 0.5, r * 0.18, r * 0.5, r * 0.42, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = "#fff";
     for (let i = 0; i < 5; i++) {
       const ty = -r * 0.18 + i * r * 0.17;
       ctx.beginPath(); ctx.moveTo(r * 0.86, ty); ctx.lineTo(r * 0.62, ty - r * 0.06); ctx.lineTo(r * 0.62, ty + r * 0.06); ctx.fill();
     }
     // oog
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(-r * 0.1, -r * 0.28, r * 0.16, 0, 6.28); ctx.fill();
-    ctx.fillStyle = "#10202c"; ctx.beginPath(); ctx.arc(-r * 0.07, -r * 0.28, r * 0.08, 0, 6.28); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(-r * 0.1, -r * 0.28, r * 0.16, 0, TAU); ctx.fill();
+    ctx.fillStyle = "#10202c"; ctx.beginPath(); ctx.arc(-r * 0.07, -r * 0.28, r * 0.08, 0, TAU); ctx.fill();
     ctx.restore();
   }
 
   function drawJellyfish(o, y) {
     const pulse = Math.sin(time * o.pulse + o.ph);   // -1..1
     const r = o.r;
+    const [cr, cg, cb] = o.col;
+    const col = (a) => `rgba(${cr},${cg},${cb},${a})`;
     ctx.save();
     ctx.translate(o.x, y);
     ctx.rotate(o.dir + Math.PI / 2);                 // klok wijst de zwemrichting op, tentakels erachter
-    // zachte gloed, gekoppeld aan de puls
-    ctx.globalAlpha = 0.12 + 0.2 * Math.max(0, pulse);
-    ctx.fillStyle = o.col;
-    ctx.beginPath(); ctx.arc(0, 0, r * 1.6, 0, 6.28); ctx.fill();
-    ctx.globalAlpha = 1;
-    // tentakels (golvend, slepen achter de klok)
-    ctx.strokeStyle = o.col; ctx.lineWidth = 2.2; ctx.globalAlpha = 0.85;
+    // bioluminescente gloed, gekoppeld aan de puls
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const gl = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 1.8);
+    gl.addColorStop(0, col(0.16 + 0.18 * Math.max(0, pulse)));
+    gl.addColorStop(1, col(0));
+    ctx.fillStyle = gl;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.8, 0, TAU); ctx.fill();
+    ctx.restore();
+    // tentakels (golvend, slepen achter de klok; afwisselend dik/dun)
     for (let i = -3; i <= 3; i++) {
       const tx = i * r * 0.16;
       const wob = Math.sin(time * o.pulse * 1.6 + i * 0.7 + o.ph) * r * 0.22;
+      ctx.strokeStyle = col(i % 2 === 0 ? 0.8 : 0.5);
+      ctx.lineWidth = i % 2 === 0 ? 2.4 : 1.5;
       ctx.beginPath();
       ctx.moveTo(tx, r * 0.15);
-      ctx.quadraticCurveTo(tx + wob, r * 0.95, tx + wob * 0.6, r * 1.8);
+      ctx.quadraticCurveTo(tx + wob, r * 0.95, tx + wob * 0.6, r * (1.7 + 0.2 * Math.sin(i + o.ph)));
       ctx.stroke();
     }
-    ctx.globalAlpha = 1;
-    // klok (samentrekken/uitzetten = voortstuwing)
+    // klok (samentrekken/uitzetten = voortstuwing) met doorschijnende gradient
     const sx = 1 + 0.14 * pulse, syc = 1 - 0.16 * pulse;
-    ctx.fillStyle = o.col;
+    const bellG = ctx.createRadialGradient(-r * 0.2, -r * 0.35, 0, 0, -r * 0.1, r * 1.15);
+    bellG.addColorStop(0, `rgba(${Math.min(255, cr + 60)},${Math.min(255, cg + 60)},${Math.min(255, cb + 60)},.95)`);
+    bellG.addColorStop(0.7, col(0.85));
+    bellG.addColorStop(1, col(0.55));
+    ctx.fillStyle = bellG;
     ctx.beginPath(); ctx.ellipse(0, 0, r * sx, r * 0.9 * syc, 0, Math.PI, 0); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(0, 0, r * sx, r * 0.28 * syc, 0, 0, Math.PI); ctx.fill();
-    // glansje + frilletjes onder de rand
-    ctx.fillStyle = "rgba(255,255,255,.28)";
-    ctx.beginPath(); ctx.ellipse(-r * 0.32 * sx, -r * 0.3, r * 0.22, r * 0.16, 0, 0, 6.28); ctx.fill();
+    // geschulpte rok onder de rand
+    ctx.beginPath();
+    ctx.moveTo(-r * sx, 0);
+    const scallops = 5;
+    for (let i = 0; i < scallops; i++) {
+      const x0 = -r * sx + (i + 0.5) * (2 * r * sx / scallops);
+      const x1 = -r * sx + (i + 1) * (2 * r * sx / scallops);
+      ctx.quadraticCurveTo(x0, r * (0.34 + 0.06 * pulse) * syc, x1, r * 0.16 * syc);
+    }
+    ctx.lineTo(r * sx, 0); ctx.closePath();
+    ctx.fillStyle = col(0.6); ctx.fill();
+    // inwendige organen (klavertje — maakt 'm net echt)
+    ctx.fillStyle = `rgba(${Math.min(255, cr + 70)},${Math.min(255, cg + 40)},${Math.min(255, cb + 70)},.55)`;
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI / 2 + Math.PI / 4;
+      ctx.beginPath(); ctx.ellipse(Math.cos(a) * r * 0.22 * sx, -r * 0.25 + Math.sin(a) * r * 0.14, r * 0.14, r * 0.1, a, 0, TAU); ctx.fill();
+    }
+    // glansje op de klok
+    ctx.fillStyle = "rgba(255,255,255,.32)";
+    ctx.beginPath(); ctx.ellipse(-r * 0.32 * sx, -r * 0.38, r * 0.24, r * 0.14, -0.5, 0, TAU); ctx.fill();
     ctx.restore();
   }
 
@@ -845,10 +1369,50 @@ window.onerror = function (msg, src, line, col) {
     if (b.got) return;
     const y = S(b.y);
     if (y < -10 || y > VH + 10) return;
-    ctx.strokeStyle = "rgba(220,250,255,.7)"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(b.x, y, b.r, 0, 6.28); ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,.5)";
-    ctx.beginPath(); ctx.arc(b.x - b.r * 0.3, y - b.r * 0.3, b.r * 0.3, 0, 6.28); ctx.fill();
+    const wx = b.x + Math.sin(time * b.wspd + b.ph) * 3;
+    // glazige vulling: licht aan de rand, transparant centrum
+    const g = ctx.createRadialGradient(wx, y, b.r * 0.2, wx, y, b.r);
+    g.addColorStop(0, "rgba(190,235,255,.06)");
+    g.addColorStop(0.75, "rgba(190,235,255,.12)");
+    g.addColorStop(1, "rgba(220,250,255,.4)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(wx, y, b.r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = "rgba(220,250,255,.75)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(wx, y, b.r, 0, TAU); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.6)";
+    ctx.beginPath(); ctx.arc(wx - b.r * 0.32, y - b.r * 0.32, b.r * 0.28, 0, TAU); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.35)";
+    ctx.beginPath(); ctx.arc(wx + b.r * 0.3, y + b.r * 0.25, b.r * 0.12, 0, TAU); ctx.fill();
+  }
+
+  // ---------------------------------------------------------------------------
+  // HUD & schermen
+  // ---------------------------------------------------------------------------
+  function heartPath(c, s) {
+    c.beginPath();
+    c.moveTo(0, s);
+    c.bezierCurveTo(-s * 1.1, s * 0.35, -s * 0.85, -s * 0.55, 0, -s * 0.12);
+    c.bezierCurveTo(s * 0.85, -s * 0.55, s * 1.1, s * 0.35, 0, s);
+    c.closePath();
+  }
+  function drawHeart(x, y, s, filled, pulse) {
+    ctx.save();
+    ctx.translate(x, y);
+    if (pulse) ctx.scale(1 + 0.1 * Math.sin(time * 7), 1 + 0.1 * Math.sin(time * 7));
+    if (filled) {
+      const g = ctx.createLinearGradient(0, -s, 0, s);
+      g.addColorStop(0, "#ff8f8f"); g.addColorStop(1, "#d61f3c");
+      heartPath(ctx, s);
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = "rgba(120,10,30,.7)"; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.7)";
+      ctx.beginPath(); ctx.ellipse(-s * 0.32, -s * 0.28, s * 0.18, s * 0.12, -0.6, 0, TAU); ctx.fill();
+    } else {
+      heartPath(ctx, s);
+      ctx.fillStyle = "rgba(10,20,32,.4)"; ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.3)"; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    ctx.restore();
   }
 
   function drawHUD() {
@@ -864,27 +1428,56 @@ window.onerror = function (msg, src, line, col) {
     }
     if (hitFlash > 0) { ctx.fillStyle = `rgba(255,60,40,${(0.35 * hitFlash).toFixed(3)})`; ctx.fillRect(0, 0, VW, VH); }
 
-    // hartjes
-    ctx.font = "20px system-ui";
-    ctx.textBaseline = "top";
+    // hartjes op een glazen capsule
+    rr(ctx, 8, 8, 92, 30, 15);
+    ctx.fillStyle = "rgba(4,18,30,.5)"; ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.14)"; ctx.lineWidth = 1; ctx.stroke();
     for (let i = 0; i < CFG.hearts; i++) {
-      ctx.globalAlpha = i < hearts ? 1 : 0.25;
-      ctx.fillText("❤", 12 + i * 26, 12);
+      drawHeart(28 + i * 26, 23, 9, i < hearts, hearts === 1 && i === 0);
     }
-    ctx.globalAlpha = 1;
-    // score (bellen)
-    ctx.fillStyle = "#dffaff"; ctx.font = "bold 18px system-ui";
-    ctx.textAlign = "right";
-    ctx.fillText("🫧 " + score, VW - 12, 14);
-    ctx.textAlign = "left";
+    // score-capsule met getekend bubbel-icoon
+    const scTxt = String(score);
+    ctx.font = "bold 16px system-ui";
+    const tw = ctx.measureText(scTxt).width;
+    const cw = tw + 44;
+    rr(ctx, VW - 8 - cw, 8, cw, 30, 15);
+    ctx.fillStyle = "rgba(4,18,30,.5)"; ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.14)"; ctx.stroke();
+    const bx0 = VW - 8 - cw + 18, by0 = 23;
+    ctx.strokeStyle = "rgba(190,240,255,.9)"; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(bx0, by0, 7, 0, TAU); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.8)";
+    ctx.beginPath(); ctx.arc(bx0 - 2.4, by0 - 2.4, 2, 0, TAU); ctx.fill();
+    ctx.fillStyle = "#dffaff"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(scTxt, bx0 + 13, by0 + 1);
+    ctx.textBaseline = "alphabetic";
 
-    // voortgangsbalk (diepte -> oppervlak) rechts
-    const bx = VW - 10, top = 70, bot = VH - 90, h = bot - top;
-    ctx.fillStyle = "rgba(255,255,255,.15)"; ctx.fillRect(bx - 4, top, 6, h);
+    // voortgangsbalk (diepte -> oppervlak) rechts, met net-markers en Roef-stip
+    const bx = VW - 13, top = 70, bot = VH - 90, h = bot - top;
+    rr(ctx, bx - 3, top, 6, h, 3);
+    ctx.fillStyle = "rgba(255,255,255,.14)"; ctx.fill();
     const prog = 1 - clamp(player.y / world.h, 0, 1);   // 1 = aan top
-    ctx.fillStyle = "#7fe0ff"; ctx.fillRect(bx - 4, bot - h * prog, 6, h * prog);
-    ctx.font = "11px system-ui"; ctx.fillStyle = "#bfe9ff"; ctx.textAlign = "right";
-    ctx.fillText("TOP", bx - 12, top - 2);
+    if (prog > 0.005) {
+      const pg = ctx.createLinearGradient(0, bot, 0, top);
+      pg.addColorStop(0, "#3fa8d8"); pg.addColorStop(0.8, "#7fe0ff"); pg.addColorStop(1, "#ffd97a");
+      rr(ctx, bx - 3, bot - h * prog, 6, h * prog, 3);
+      ctx.fillStyle = pg; ctx.fill();
+    }
+    // net-markers
+    for (const n of nets) {
+      const ny = bot - h * (1 - n.y / world.h);
+      ctx.strokeStyle = n.final ? "rgba(255,215,120,.95)" : "rgba(230,245,255,.65)";
+      ctx.lineWidth = n.final ? 2.5 : 1.5;
+      ctx.beginPath(); ctx.moveTo(bx - 7, ny); ctx.lineTo(bx + 4, ny); ctx.stroke();
+    }
+    // Roef-marker
+    const my = bot - h * prog;
+    ctx.fillStyle = "#ff8a3d";
+    ctx.beginPath(); ctx.arc(bx, my, 5, 0, TAU); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(bx, my, 5, 0, TAU); ctx.stroke();
+    ctx.font = "bold 10px system-ui"; ctx.fillStyle = "#ffe9b8"; ctx.textAlign = "right";
+    ctx.fillText("TOP ▲", bx + 5, top - 6);
     ctx.textAlign = "left";
 
     // jager-nabijheid: rode gloed onderaan
@@ -903,85 +1496,201 @@ window.onerror = function (msg, src, line, col) {
       }
     }
 
-    // banner-melding
-    if (bannerT > 0 && banner) {
-      ctx.globalAlpha = clamp(bannerT, 0, 1);
-      ctx.fillStyle = "rgba(0,0,0,.45)";
-      ctx.fillRect(0, VH * 0.32, VW, 40);
-      ctx.fillStyle = "#fff"; ctx.font = "bold 15px system-ui"; ctx.textAlign = "center";
-      ctx.fillText(banner, VW / 2, VH * 0.32 + 12);
-      ctx.textAlign = "left"; ctx.globalAlpha = 1;
+    // banner-melding (glazen pil, glijdt zachtjes in) — niet over de eindkaart heen
+    if (bannerT > 0 && banner && state !== "win" && state !== "lose") {
+      const a = clamp(bannerT / 0.35, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.font = "bold 15px system-ui";
+      const bw = ctx.measureText(banner).width + 44;
+      const bxp = (VW - bw) / 2, byp = VH * 0.3 - (1 - a) * 10;
+      rr(ctx, bxp, byp, bw, 38, 19);
+      ctx.fillStyle = "rgba(4,16,28,.72)"; ctx.fill();
+      ctx.strokeStyle = "rgba(255,200,120,.4)"; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(banner, VW / 2, byp + 20);
+      ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+      ctx.restore();
     }
   }
 
-  function centerText(lines) {
-    ctx.fillStyle = "rgba(0,10,20,.6)"; ctx.fillRect(0, 0, VW, VH);
-    ctx.textAlign = "center";
-    let y = VH * 0.32;
-    for (const l of lines) {
-      ctx.fillStyle = l.c || "#fff";
-      ctx.font = l.f || "18px system-ui";
-      ctx.fillText(l.t, VW / 2, y);
-      y += l.s || 30;
+  // titel / win / verlies — cinematische kaarten
+  function drawScreenCard(y0, h) {
+    rr(ctx, 22, y0, VW - 44, h, 18);
+    ctx.fillStyle = "rgba(3,14,26,.78)"; ctx.fill();
+    const bg = ctx.createLinearGradient(0, y0, 0, y0 + h);
+    bg.addColorStop(0, "rgba(140,220,255,.35)"); bg.addColorStop(1, "rgba(140,220,255,.08)");
+    ctx.strokeStyle = bg; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  function drawTitle() {
+    // held in beeld: Roef dobbert boven de titel
+    ctx.save();
+    const fy = VH * 0.22 + Math.sin(time * 1.3) * 8;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const halo = ctx.createRadialGradient(VW / 2, fy, 10, VW / 2, fy, 110);
+    halo.addColorStop(0, "rgba(255,150,60,.30)"); halo.addColorStop(1, "rgba(255,150,60,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(VW / 2, fy, 110, 0, TAU); ctx.fill();
+    ctx.restore();
+    ctx.translate(VW / 2, fy);
+    ctx.rotate(Math.sin(time * 0.9) * 0.08);
+    drawRoefBody(30, 40, 1, 0);
+    ctx.restore();
+
+    // titel: per letter een golfje + warme gradient
+    const title = "ROEF DE VIS";
+    ctx.font = "800 38px system-ui";
+    const widths = [], totW = title.split("").reduce((acc, ch) => { const w = ctx.measureText(ch).width; widths.push(w); return acc + w; }, 0);
+    let lx = (VW - totW) / 2;
+    const ty = VH * 0.40;
+    const tg = ctx.createLinearGradient(0, ty - 34, 0, ty + 6);
+    tg.addColorStop(0, "#ffd9a0"); tg.addColorStop(0.6, "#ff9a4d"); tg.addColorStop(1, "#e8641c");
+    ctx.textAlign = "left"; ctx.lineJoin = "round";
+    for (let i = 0; i < title.length; i++) {
+      const dy = Math.sin(time * 2 + i * 0.55) * 3.5;
+      ctx.strokeStyle = "rgba(60,20,4,.9)"; ctx.lineWidth = 6;
+      ctx.strokeText(title[i], lx, ty + dy);
+      ctx.fillStyle = tg;
+      ctx.fillText(title[i], lx, ty + dy);
+      lx += widths[i];
     }
+    // subtitel
+    ctx.textAlign = "center";
+    ctx.font = "600 17px system-ui";
+    ctx.fillStyle = "#9adfff";
+    ctx.fillText("—  T O   T H E   T O P  —", VW / 2, ty + 30);
+
+    // uitleg-kaart
+    const cy = VH * 0.50, ch = VH * 0.21;
+    drawScreenCard(cy, ch);
+    ctx.fillStyle = "#dff3ff"; ctx.font = "14px system-ui";
+    const lines = [
+      "Veeg een richting op → Roef zwemt die kant",
+      "op in een rechte lijn. Glip door de netten —",
+      "de monstervis raakt erin verstrikt!",
+      "",
+      "Rotsen blokkeren • vijanden prikken:",
+      "egels boven · kogelvis midden · lampvis diep",
+    ];
+    let lyy = cy + 26;
+    for (const l of lines) {
+      if (l) {
+        ctx.fillStyle = l.startsWith("Rotsen") || l.startsWith("egels") ? "#9fe8d8" : "#dff3ff";
+        ctx.fillText(l, VW / 2, lyy);
+      }
+      lyy += l ? 21 : 8;
+    }
+
+    // veeg-hint: drie oplopende chevrons
+    const hy = VH * 0.78;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = 0; i < 3; i++) {
+      const p = ((time * 0.9 + i * 0.33) % 1);
+      const a = Math.sin(p * Math.PI) * 0.8;
+      const yy = hy - p * 34;
+      ctx.strokeStyle = `rgba(160,235,255,${a.toFixed(3)})`;
+      ctx.lineWidth = 3; ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(VW / 2 - 12, yy + 7); ctx.lineTo(VW / 2, yy); ctx.lineTo(VW / 2 + 12, yy + 7);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // tik-prompt (pulserend)
+    const pa = 0.6 + 0.4 * Math.sin(time * 3);
+    ctx.font = "bold 19px system-ui";
+    ctx.fillStyle = `rgba(255,255,255,${pa.toFixed(3)})`;
+    ctx.fillText("▶ Tik om te starten", VW / 2, VH * 0.86);
+    ctx.textAlign = "left";
+  }
+
+  function drawEnd(win) {
+    // kleur-was over het beeld
+    ctx.fillStyle = win ? "rgba(4,24,34,.62)" : "rgba(24,4,8,.62)";
+    ctx.fillRect(0, 0, VW, VH);
+    const cy = VH * 0.24, ch = win ? VH * 0.42 : VH * 0.32;
+    drawScreenCard(cy, ch);
+    ctx.textAlign = "center";
+    // titel met gloed
+    ctx.save();
+    ctx.shadowColor = win ? "rgba(140,255,220,.8)" : "rgba(255,90,90,.8)";
+    ctx.shadowBlur = 18;
+    ctx.font = "800 32px system-ui";
+    ctx.fillStyle = win ? "#aef5dd" : "#ff9090";
+    ctx.fillText(win ? "THE TOP!" : "GEPAKT!", VW / 2, cy + 52);
+    ctx.restore();
+    ctx.font = "15px system-ui"; ctx.fillStyle = "#e8f6ff";
+    ctx.fillText(win ? "Roef ontsnapt — klein zijn redt hem!" : "De monstervis was net iets sneller.", VW / 2, cy + 86);
+    // score-regel met bubbel-icoon
+    const scTxt = score + " bellen verzameld";
+    ctx.font = "bold 17px system-ui";
+    const tw2 = ctx.measureText(scTxt).width;
+    const ix = VW / 2 - tw2 / 2 - 14;
+    ctx.strokeStyle = "rgba(190,240,255,.9)"; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(ix, cy + 118, 7, 0, TAU); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.8)";
+    ctx.beginPath(); ctx.arc(ix - 2.4, cy + 115.6, 2, 0, TAU); ctx.fill();
+    ctx.fillStyle = "#cfeeff";
+    ctx.fillText(scTxt, VW / 2 + 8, cy + 123);
+    if (win) {
+      ctx.font = "italic 15px system-ui"; ctx.fillStyle = "#ffd2a0";
+      ctx.fillText("...maar boven water cirkelt een meeuw", VW / 2, cy + 158);
+      ctx.fillText("Wordt vervolgd —", VW / 2, cy + 180);
+    }
+    const pa = 0.6 + 0.4 * Math.sin(time * 3);
+    ctx.font = "bold 17px system-ui";
+    ctx.fillStyle = `rgba(255,255,255,${pa.toFixed(3)})`;
+    ctx.fillText(win ? "▶ Tik om opnieuw te spelen" : "▶ Tik om opnieuw te proberen", VW / 2, cy + ch - 26);
     ctx.textAlign = "left";
   }
 
   function render() {
     drawWater();
     if (state === "title") {
-      centerText([
-        { t: "🐟  ROEF DE VIS", f: "bold 30px system-ui", s: 40, c: "#ffb066" },
-        { t: "To the Top", f: "italic 20px system-ui", s: 50, c: "#cfeeff" },
-        { t: "Veeg een richting op → Roef zwemt", f: "15px system-ui", s: 24 },
-        { t: "die kant op in een rechte lijn.", f: "15px system-ui", s: 28 },
-        { t: "Glip door de netten — de monstervis", f: "15px system-ui", s: 24 },
-        { t: "kan er niet door en raakt verstrikt.", f: "15px system-ui", s: 44 },
-        { t: "Rotsen blokkeren • vijanden prikken!", f: "15px system-ui", s: 24, c: "#9fd" },
-        { t: "egels boven, kogelvis midden, lampvis diep.", f: "13px system-ui", s: 46, c: "#9fd" },
-        { t: "▶ Tik om te starten", f: "bold 20px system-ui", c: "#fff" },
-      ]);
+      drawBackdrop();
+      drawPlankton();
+      drawFog();
+      drawTitle();
+      drawForeground();
+      drawVignette();
       return;
     }
 
     // wereld binnen een shake-offset (water + HUD blijven stil = leesbaar)
     ctx.save();
-    if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    if (shake > 0) {
+      ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+      ctx.rotate((Math.random() - 0.5) * shake * 0.0022);
+    }
     drawBackdrop();
     drawPlankton();
     for (const c of caught) {        // gevangen monstervissen achter je (spartelen) — mag wazen
       const y = S(c.y);
-      if (y > -80 && y < VH + 80) predatorPath(c.x, y, c.vis.size, c.wob, c.tier, c.thrash);
+      if (y > -80 && y < VH + 80) predatorPath(c.x, y, c.vis.size, c.wob, c.tier, c.thrash, 0);
     }
     drawFog();                        // waas alleen over de verre achtergrond
     // gameplay-objecten staan VÓÓR de waas -> altijd scherp leesbaar
     nets.forEach(drawNet);
     obstacles.forEach(drawObstacle);
     bubbles.forEach(drawBubble);
-    if (state === "play") predatorPath(predator.x, S(predator.y), predator.vis.size, predator.wob, predator.tier, 0);
+    if (state === "play") {
+      const menace = clamp(1 - (predator.y - player.y) / (VH * 0.7), 0, 1);
+      predatorPath(predator.x, S(predator.y), predator.vis.size, predator.wob, predator.tier, 0, menace);
+    }
+    drawTrail();
+    drawParticles();
     drawRoef();
+    drawFloaters();
     ctx.restore();
     drawForeground();   // bokeh-deeltjes dicht bij de lens (geen shake)
-    drawVignette();     // cinematische focus
+    drawVignette();     // cinematische focus + korrel
     drawHUD();
 
-    if (state === "win") {
-      centerText([
-        { t: "🎉 The Top!", f: "bold 30px system-ui", s: 42, c: "#9fd" },
-        { t: "Roef ontsnapt — klein zijn redt hem!", s: 40 },
-        { t: "🫧 " + score + " bellen verzameld", s: 50, c: "#cfeeff" },
-        { t: "...maar boven water cirkelt een meeuw 🐦", f: "italic 17px system-ui", s: 30, c: "#ffd2a0" },
-        { t: "Wordt vervolgd —", f: "italic 17px system-ui", s: 46, c: "#ffd2a0" },
-        { t: "▶ Tik om opnieuw te spelen", f: "bold 18px system-ui", c: "#fff" },
-      ]);
-    } else if (state === "lose") {
-      centerText([
-        { t: "🦈 Gepakt!", f: "bold 30px system-ui", s: 42, c: "#ff8080" },
-        { t: "De monstervis was net iets sneller.", s: 44 },
-        { t: "🫧 " + score + " bellen verzameld", s: 50, c: "#cfeeff" },
-        { t: "▶ Tik om opnieuw te proberen", f: "bold 18px system-ui", c: "#fff" },
-      ]);
-    }
+    if (state === "win") drawEnd(true);
+    else if (state === "lose") drawEnd(false);
   }
 
   // ---------------------------------------------------------------------------

@@ -52,46 +52,47 @@ Meerdere werelden, power-ups (boost/schild), skins, audio, het scripted "opgeget
 worden"-moment als alternatieve escalatie-trigger, en een endless-modus. Zie het GDD
 voor de volledige scope.
 
-## Visuele stijl (art-direction pass)
+## Visuele stijl (AAA-graphics pass)
 
-Na een multi-agent visual review zijn de graphics opgewaardeerd, met behoud van
-leesbaarheid en 60fps:
+De volledige render-laag is opnieuw opgebouwd voor console-kwaliteit beeld, met
+behoud van leesbaarheid en een gemeten stabiele **60fps** (gameplay-logica is
+ongewijzigd):
 
-- **Roef = de warme held:** warme gloed-halo, radiaal-geschaduwd lijf, contour,
-  drop-shadow en idle-dobber. Als enige warm object springt hij eruit tegen het
-  koele water.
-- **Monstervissen:** dreigend silhouet met rim-light, pulserend gloeiende ogen en
-  spleet-pupillen; enger/feller per tier; gevangen vissen spartelen in het net.
-- **Sfeer & diepte:** meerpunts diepte-gradient (turquoise → afgrond), geanimeerde
-  godrays, oppervlak-shimmer + caustics, zwevend plankton, parallax wier-silhouetten,
-  atmosferische diepte-waas, een **voorgrond-bokeh-laag** (onscherpe deeltjes dicht
-  bij de lens) en een cinematisch **edge-vignet**.
-- **Objecten:** onregelmatige, getextureerde rotsen met algen; koel-gekleurde,
-  pulserende kwallen; stijgende luchtbellen; netten met doorhang + gloed (goud voor
-  het eind-net).
-- **Game-feel/juice:** screen shake bij treffer/net/verlies, hit-flash en
-  kwetsbaar-vignet — HUD blijft altijd stil en leesbaar.
+- **Roef = de warme held, volledig procedureel geanimeerd:** kwispelende
+  tweelobbige staartvin (frequentie schaalt met snelheid), flutterende zijvinnen,
+  **squash & stretch** bij elke veeg, knipperende ogen, blosjes, schub-suggestie,
+  rim-light, warme gloed-halo, drop-shadow, motion-trail en een bubbel-spoor uit
+  zijn mondje. Als enige warm object springt hij eruit tegen het koele water.
+- **Monstervissen:** vinnen, kieuwspleten, littekens per tier, tweelobbige staart —
+  en een **bek die verder opent naarmate hij dichterbij komt** (met keel-gloed en
+  extra tandenrij). Pulserend gloeiende ogen met spleet-pupillen; gevangen vissen
+  spartelen in het net; bubbels uit de bek.
+- **Water & licht:** meerpunts diepte-gradient (tropisch turquoise → afgrond),
+  zon-gloed + **volumetrische godrays** vanuit een zon-punt, **naadloos tilende
+  geanimeerde caustics** (twee tegengesteld drijvende licht-webben), golvende
+  oppervlakte-shimmer met heldere waterlijn.
+- **Diepte-parallax (5 lagen):** verre rots-silhouetten, wier-silhouetten,
+  **scholen ambient visjes**, zwevend plankton, en een voorgrond-bokeh-laag dicht
+  bij de lens. Atmosferische diepte-waas scheidt achtergrond van gameplay.
+- **Objecten:** rotsen krijgen een **geprerenderde textuur** (mineraal-spikkels,
+  richels, toplicht, kernschaduw) met geanimeerde algen; kwallen met doorschijnende
+  gradient-klok, geschulpte rok, inwendige organen en bioluminescente gloed;
+  lampvissen met fotoforen en een loklampje dat de omgeving echt verlicht;
+  glazige luchtbellen met dubbele glinstering; netten met lopende glinstering
+  (goud twinkelt extra op het eind-net).
+- **VFX/partikels:** bubbel-pop + expanderende ring + "+1"-floater bij pick-ups,
+  vonken bij treffers, zand-plofjes bij rots-botsingen, net-sparkles bij het
+  doorglippen, triomf-trail tijdens de win-climb.
+- **Post-processing:** cinematisch edge-vignet + subtiele **filmkorrel**;
+  screen shake (nu ook met micro-rotatie), hit-flash en kwetsbaar-vignet.
+- **HUD & schermen:** getekende vector-hartjes (pulseren bij 1 leven) en
+  score-capsule op glazen panelen, voortgangsbalk met net-markers en Roef-stip,
+  glazen banner-pil; titelscherm met golvende gradient-letters, dobberende Roef,
+  veeg-hint-chevrons; win/verlies-kaarten met gloeiende titels. HUD blijft altijd
+  stil en leesbaar.
 
-## Cartoon-assets (sprite-pipeline)
-
-Het spel heeft een **sprite-systeem** met **procedurele fallback**: is er voor een
-personage een sprite geladen, dan wordt die getekend; zo niet, dan valt de teken-code
-automatisch terug op de in-code vormen. Nul regressie als een asset ontbreekt.
-
-- **Nu ingebouwd:** Roef is een embedded **cartoon-SVG** (geen los bestand nodig —
-  zit als data-URI in `index.html`, dus blijft offline in één bestand). Hij roteert,
-  dobbert en gloeit nog steeds procedureel; alleen het lijf komt uit de sprite.
-- **Zelf art toevoegen/vervangen:** vervang de data-URI in `SPRITE_SRC` (boven in het
-  script) door je eigen **PNG of SVG als data-URI (base64)**. Zo blijft het één
-  offline bestand. Sprites moeten met de **neus omhoog** wijzen (Roef roteert naar
-  zijn zwemrichting).
-- **Aangeleverde PNG's** (bijv. via Midjourney/DALL·E, gratis packs zoals Kenney.nl,
-  of een illustrator): transparante PNG per personage, neus omhoog. Voeg een sleutel
-  toe aan `SPRITE_SRC` (bijv. `jelly`, `angler`, `urchin`, `puffer`) en roep de sprite
-  aan in de bijbehorende teken-functie — de fallback blijft bestaan.
-
-> Geschilderde bitmap-art kan niet in-engine gegenereerd worden; die lever je aan.
-> Vector/SVG cartoon-sprites kunnen wél in code worden opgesteld.
+> Alle art is in-code (Canvas 2D, vector + geprerenderde offscreen-textures) —
+> het blijft één offline `index.html` zonder assets of dependencies.
 
 ## Techniek
 
