@@ -72,6 +72,27 @@ leesbaarheid en 60fps:
 - **Game-feel/juice:** screen shake bij treffer/net/verlies, hit-flash en
   kwetsbaar-vignet — HUD blijft altijd stil en leesbaar.
 
+## Cartoon-assets (sprite-pipeline)
+
+Het spel heeft een **sprite-systeem** met **procedurele fallback**: is er voor een
+personage een sprite geladen, dan wordt die getekend; zo niet, dan valt de teken-code
+automatisch terug op de in-code vormen. Nul regressie als een asset ontbreekt.
+
+- **Nu ingebouwd:** Roef is een embedded **cartoon-SVG** (geen los bestand nodig —
+  zit als data-URI in `index.html`, dus blijft offline in één bestand). Hij roteert,
+  dobbert en gloeit nog steeds procedureel; alleen het lijf komt uit de sprite.
+- **Zelf art toevoegen/vervangen:** vervang de data-URI in `SPRITE_SRC` (boven in het
+  script) door je eigen **PNG of SVG als data-URI (base64)**. Zo blijft het één
+  offline bestand. Sprites moeten met de **neus omhoog** wijzen (Roef roteert naar
+  zijn zwemrichting).
+- **Aangeleverde PNG's** (bijv. via Midjourney/DALL·E, gratis packs zoals Kenney.nl,
+  of een illustrator): transparante PNG per personage, neus omhoog. Voeg een sleutel
+  toe aan `SPRITE_SRC` (bijv. `jelly`, `angler`, `urchin`, `puffer`) en roep de sprite
+  aan in de bijbehorende teken-functie — de fallback blijft bestaan.
+
+> Geschilderde bitmap-art kan niet in-engine gegenereerd worden; die lever je aan.
+> Vector/SVG cartoon-sprites kunnen wél in code worden opgesteld.
+
 ## Techniek
 
 Vanilla JavaScript + Canvas 2D, geen dependencies. Responsive/portrait, high-DPI,
