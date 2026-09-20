@@ -1,31 +1,42 @@
-name: Deploy prototype to GitHub Pages
+name: Test and publish game
 
-# Publiceert de hele repo-root (root index.html stuurt door naar /prototype/).
 on:
+  pull_request:
   push:
-    branches: ["claude/roef-de-vis-game-specs-ejein7"]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
-  deploy:
+  test-and-build:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/claude/roef-de-vis-game-specs-ejein7'
+        with:
+          path: dist
+
+  deploy:
+    needs: test-and-build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/claude/roef-de-vis-game-specs-ejein7'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: "."
       - id: deployment
         uses: actions/deploy-pages@v4

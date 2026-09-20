@@ -1,92 +1,94 @@
-# Roef de Vis — To the Top 🐟⬆️
+# To the Top — Roef's great escape
 
-> Een verticale mobiele arcade-game waarin **Roef de vis** naar het wateroppervlak
-> zwemt om te ontsnappen aan het monster dat hem van onderaf achtervolgt.
+One small fish. Three big problems. Help Roef outswim the food chain in a portrait
+arcade game for touch and keyboard. Slip through three nets, trap the hunters,
+and reach the actual surface. Small is your superpower.
 
-![status](https://img.shields.io/badge/status-prototype-green)
-![platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android-lightgrey)
+## Play locally
 
----
+Requires **Node.js 22 or newer**. No dependencies or installation step.
 
-## In één zin
-
-Zwem omhoog, ontwijk de obstakels, blijf het monster voor — en haal **the top**
-(het wateroppervlak) voordat je wordt ingehaald.
-
-## Het idee
-
-Roef is een kleine vis op de bodem van de zee/het meer. Diep onder hem jaagt een
-**monstervis**. De enige uitweg is naar boven: Roef moet door meerdere schermen
-hoge levels heen zwemmen, langs rotsen, kwallen, stroming en visnetten, totdat hij
-het oppervlak doorbreekt.
-
-Het spannende: de jager verandert. De voedselketen ("grote vis eet kleine vis") kent
-**3 monstervissen** die oplopen in grootte. De jager schuift een schakel op wanneer
-hij wordt **opgegeten door een grotere monstervis**, óf wanneer Roef hem **afschudt
-door door een net te glippen** — waarna een nieuwe, grotere vis opduikt. De druk
-wordt steeds groter.
-
-De ontknoping draait het om: bij het oppervlak hangt een **visnet**. Roef is klein
-genoeg om er dwars doorheen te zwemmen — de grote monstervis niet, en raakt
-verstrikt. Roef ontsnapt. Klein zijn was uiteindelijk zijn redding.
-
-Het spel speelt zich af over de **volledige breedte** van het scherm — je beweegt
-Roef links/rechts en stuwt hem omhoog terwijl het beeld meescrolt naar boven.
-
-Aan het oppervlak gebeurt er telkens iets onverwachts en grappigs (zie
-[de eindscenario's](#eindscenarios-de-twist)).
-
-## Kernkenmerken
-
-- 📱 **Verticale gameplay over de volle schermbreedte** — gemaakt voor mobiel, één hand.
-- 🌊 **Levels van meerdere schermen hoog** — elk level eindigt bij het oppervlak.
-- 👹 **Escalerende jager** — een kleine monstervis wordt opgegeten door een grotere; de druk loopt op.
-- 🪨 **Obstakels & hazards** — rotsen, kwallen, stroming, netten en meer.
-- 🫧 **Power-ups & collectibles** — luchtbellen, boosts en schilden.
-- 🕸️ **Het net als ontknoping** — Roef glipt erdoorheen, de grote vis raakt verstrikt.
-
-## Prototype spelen ▶️
-
-Er is een **speelbaar HTML5-prototype** (één bestand, geen build):
-
-```bash
-cd prototype
-python3 -m http.server 8000   # open http://localhost:8000
+```sh
+npm run dev
 ```
 
-Of open `prototype/index.html` direct in een browser. **Sleep** om Roef te laten
-zwemmen, **loslaten** om te zakken. Glip door de netten, ontwijk rotsen en kwallen,
-en haal de top. Zie [prototype/README.md](prototype/README.md) voor details.
+Open **http://127.0.0.1:4173**. ES modules need an HTTP server; opening the HTML
+directly from disk is not supported. The old `/prototype/` address redirects to
+the finished game at the root.
 
-## Documentatie
+## Controls
 
-| Document | Inhoud |
-|----------|--------|
-| [docs/DESIGN.md](docs/DESIGN.md) | Volledig Game Design Document (GDD) |
-| [docs/REVIEW.md](docs/REVIEW.md) | Review van het idee + aanbevelingen |
-| [prototype/](prototype/) | Speelbaar HTML5-prototype van de kern-gameplay |
+| Action | Touch / mouse | Keyboard |
+| --- | --- | --- |
+| Swim up | Hold in the water | Hold Space, ↑, or W |
+| Steer | Drag left or right, relative to your starting point | ← → or A D |
+| Slow down | Release | Release the swim key |
+| Pause | Pause button | Esc or P |
 
-## De verhaalboog (escalerende jager → het net)
+The first run waits for your swim input. Pausing, switching tabs, losing focus,
+or resizing stops play safely. Release and grab anywhere to reposition your
+finger without moving Roef suddenly. Only the primary pointer controls Roef.
 
-De spanning bouwt op via de **voedselketen**:
+**Settings:** optional original synthesized sound, auto-swim, and reduced motion.
+Preferences and personal records stay on the device. The game continues if
+browser storage or audio is unavailable. There is no account, tracking, or server.
 
-1. Roef wordt achtervolgd door een **kleine monstervis** (schakel 1 van 3).
-2. De jager schuift op naar een **grotere monstervis** — door opgegeten te worden óf
-   doordat Roef hem via een net afschudt. Enger, sneller, vult meer van het scherm.
-3. Dit gebeurt tot de **3e, reusachtige** monstervis, zodat de druk oploopt.
-4. **Ontknoping:** bij het oppervlak hangt een **visnet**. Roef glipt er klein als
-   hij is dwars doorheen; de grote monstervis is te groot en raakt verstrikt. Roef
-   ontsnapt — klein zijn redt hem.
-5. **Cliffhanger:** net boven water doemt al een nieuwe dreiging op (meeuw, boot…) —
-   "wordt vervolgd".
+## The game
 
-## Status & roadmap (kort)
+- **Classic:** a repeatable route to learn and master.
+- **Daily dive:** a date-seeded course, the same for everyone on a UTC day.
+  Scores are personal and local; there is no online leaderboard.
+- **Easy tide:** five hearts and a slower hunter.
+- Runs take approximately **45–65 seconds** with continuous progress.
+- Bubble trails connect navigable passages. Creatures hurt; rocks block.
+- Cyan shields absorb one creature hit; yellow boosts add a short burst of speed.
+- Three progressively larger hunters, physical net captures, a surface escape,
+  and one suspicious seagull.
 
-Er is een **speelbaar prototype** dat de kern-gameplay valideert (zwemmen, obstakels,
-escalerende jager, net-ontknoping, cliffhanger). De eerstvolgende mijlpaal is een
-volledige verticale-slice (MVP). Zie de
-[roadmap in het GDD](docs/DESIGN.md#14-roadmap--milestones).
+## Check and package
 
-## Licentie
+```sh
+npm test
+npm run build
+npm run preview
+```
 
-Nog te bepalen.
+`dist/` is the deployable browser release. The preview uses port 4173 too; stop
+the development server first, or set `PORT` to another value. Everything required
+to play ships in the artifact, including artwork and audio code. No third-party
+runtime requests, fonts, or asset services are required.
+
+GitHub Actions tests and builds each push and PR. Merging into the repository's
+default branch deploys the checked artifact to GitHub Pages. See
+[release instructions](docs/RELEASE.md) and the [release review](docs/SHIP_REVIEW.md).
+
+This is a **browser release**, not an iOS/Android store package. Native signing,
+store listings, and physical-device acceptance are separate release steps.
+
+## Development
+
+| File | Responsibility |
+| --- | --- |
+| `src/game.js` | Seeded courses, movement, collision, hunters, scoring |
+| `src/renderer.js` | Original Canvas artwork, scenery, animation, effects |
+| `src/main.js` | Controls, menus, pause, DOM HUD, game loop |
+| `src/audio.js` | Original Web Audio effects and ambient tones |
+| `src/storage.js` | Validated, versioned local preferences and records |
+| `tests/` | Simulation, persistence, server and packaging tests |
+
+Logical playfield dimensions remain **420 × 760** on every screen. Rendering
+scales to the available area without changing physics. Collision simulation uses
+steps no larger than 1/120 second. Motion reduction disables decorative movement,
+screen shake and flashing while preserving the gameplay information.
+
+For visual development, `tests/replay.html` runs the real simulation and renderer
+through complete seeded routes. It is excluded from release builds.
+
+The original Dutch concept and historical prototype review remain in
+[docs/DESIGN.md](docs/DESIGN.md) and [docs/REVIEW.md](docs/REVIEW.md). The ship review
+documents the implemented browser version and supersedes their prototype status.
+
+## Rights
+
+No third-party art or audio is bundled. The project does not yet declare an
+open-source license; publishing the source does not grant reuse rights.
