@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>To the Top — renderer verification replay</title>
+  <style>
+    :root { color-scheme: dark; font: 14px/1.5 system-ui,sans-serif; background: #071624; color: #def1f4; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { min-height: 100svh; display: flex; align-items: center; justify-content: center; gap: 32px; padding: 20px; }
+    .viewport { width: min(420px,calc((100svh - 40px)*420/760)); flex: none; }
+    canvas { display: block; width: 100%; aspect-ratio: 420 / 760; background: #09263c; border: 1px solid #345264; }
+    aside { width: 320px; max-width: 100%; }
+    h1 { font-size: 21px; line-height: 1.2; margin: 0 0 12px; }
+    p { color: #93b4c4; }
+    label { display: block; margin: 15px 0; }
+    label span { display: block; margin-bottom: 5px; }
+    button,select { font: inherit; min-height: 38px; padding: 7px 11px; }
+    button { cursor: pointer; }
+    select { width: 100%; }
+    #run { width: 100%; background: #d49a4a; color: #102231; border: 1px solid #ecb462; font-weight: 700; }
+    .transport { display: flex; gap: 10px; margin-top: 10px; }
+    .transport button { flex: 1; }
+    .toggle { display: flex; gap: 9px; align-items: center; }
+    .toggle input { width: 18px; height: 18px; }
+    .stats { display: grid; grid-template-columns: 1fr auto; margin: 21px 0 0; border-top: 1px solid #345264; padding-top: 13px; gap: 5px 14px; font-variant-numeric: tabular-nums; }
+    .stats dt { color: #93b4c4; }
+    .stats dd { margin: 0; text-align: right; }
+    #status { color: #8be7d4; min-height: 3em; }
+    #error { color: #ffc6be; white-space: pre-wrap; }
+    small { display: block; color: #7497aa; margin-top: 15px; }
+    @media(max-width:720px) { main { flex-direction: column; gap: 20px; padding: 16px; } .viewport { width: min(420px,100%); } aside { width: min(420px,100%); } }
+  </style>
+  <script type="module" src="./replay.mjs"></script>
+</head>
+<body>
+  <main>
+    <div class="viewport"><canvas id="replay-canvas" width="420" height="760" aria-label="Actual To the Top renderer playing a valid bubble-trail route"></canvas></div>
+    <aside>
+      <h1>Renderer verification replay</h1>
+      <p>Local test fixture. A trail follower uses the real swimming, collision, collection, hunter and net rules.</p>
+      <button id="run" type="button">Run complete route</button>
+      <div class="transport"><button id="pause" type="button" disabled>Pause</button><button id="resume" type="button">Resume</button></div>
+      <label><span>Select checkpoint</span><select id="checkpoint"><option value="" selected>Choose a checkpoint…</option value="abyss">Abyss</option><option value="reef">Reef</option><option value="shallows">Shallows</option><option value="surface">Surface</option></select></label>
+      <label><span>Replay speed</span><select id="speed"><option value="1">1× real time</option><option value="4" selected>4×</option></select></label>
+      <label class="toggle"><input id="reduced-motion" type="checkbox">Reduced motion</label>
+      <p id="status" role="status">Paused at the start. Run the route or choose a checkpoint.</p>
+      <dl class="stats">
+        <dt>Game state</dt><dd id="state">play · paused</dd>
+        <dt>Zone</dt><dd id="zone">The deep</dd>
+        <dt>Health</dt><dd id="health">3 / 3</dd>
+        <dt>Progress</dt><dd id="progress">0%</dd>
+        <dt>Bubbles</dt><dd id="score">0</dd>
+        <dt>Nets crossed / caught</dt><dd id="nets">0 / 0</dd>
+        <dt>Game elapsed</dt><dd id="elapsed">0.00s</dd>
+        <dt>Rendered frames</dt><dd id="frames">0</dd>
+        <dt>Simulation steps</dt><dd id="steps">0</dd>
+        <dt>Average renderer</dt><dd id="render-ms">0.00 ms</dd>
+        <dt>Event count</dt><dd id="events">0</dd>
+      </dl>
+      <small>Seed 1 · Classic · 1/120s simulation. Checkpoints replay valid inputs from a fresh game; they never reposition actors or change health. The final scene remains visible.</small>
+      <p id="error" role="alert" hidden></p>
+    </aside>
+  </main>
+</body>
+</html>

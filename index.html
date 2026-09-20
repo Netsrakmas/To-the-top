@@ -1,21 +1,79 @@
-<!DOCTYPE html>
-<html lang="nl">
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Roef de Vis — To the Top</title>
-<!-- Stuur de Pages-root direct door naar het speelbare prototype -->
-<meta http-equiv="refresh" content="0; url=./prototype/" />
-<link rel="canonical" href="./prototype/" />
-<style>
-  html,body{margin:0;height:100%;background:#07263c;color:#cfeeff;
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    display:flex;align-items:center;justify-content:center;text-align:center}
-  a{color:#ffb066}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#061b2b">
+  <meta name="description" content="One small fish. Three big problems. Help Roef outswim the food chain in To the Top, a free underwater arcade escape.">
+  <title>To the Top — Roef's great escape</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/icon.svg">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./src/boot.js"></script>
 </head>
 <body>
-  <p>🐟 Roef de Vis — To the Top<br/>
-  Je wordt doorgestuurd… <a href="./prototype/">Tik hier als dat niet gebeurt</a>.</p>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M12 20V4M5 11l7-7 7 7"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 8q5 4 0 8M20 5q7 7 0 14"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6m0-6-5 6"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><path d="m9 3-1 3-3 1-2 4 2 2v4l4 3 3-1 3 1 4-3v-4l2-2-2-4-3-1-1-3z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20S2 14 2 8a5 5 0 0 1 10-1A5 5 0 0 1 22 8c0 6-10 12-10 12Z"/></symbol>
+    <symbol id="i-bubble" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 11a4 4 0 0 1 4-4"/></symbol>
+    <symbol id="i-fish" viewBox="0 0 32 24"><path d="M4 12C8 1 23 1 29 12c-6 11-21 11-25 0Zm0 0L1 5v14Z"/><circle cx="23" cy="10" r="1"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 4 3c-1 1-1 2-1 2M12 17v.1"/></symbol>
+  </defs></svg>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="To the Top home"><svg><use href="#i-fish"/></svg><span>ROEF DE VIS<span class="brand-sub">AN UNDERWATER ESCAPE</span></span></a>
+    <div class="header-right"><span class="edition">SMALL FISH. BIG ADVENTURE.</span><button class="icon-button" id="help-top" aria-label="How to play"><svg><use href="#i-help"/></svg></button><button class="icon-button" id="settings-top" aria-label="Settings"><svg><use href="#i-gear"/></svg></button></div>
+  </header>
+  <main class="game-layout">
+    <aside class="intro-side" aria-label="About the game">
+      <div class="eyebrow"><span class="live-dot"></span> THE GREAT ESCAPE</div>
+      <h2>THE OCEAN<br>IS BIG.<br><span>YOU'RE<br>NOT.</span></h2>
+      <p>Meet Roef. Small fish. Rather large problem. There’s only one way out.</p>
+      <div class="up-mark"><svg><use href="#i-arrow"/></svg><span>UP.</span></div>
+      <p class="side-note">A little courage goes a long way.</p>
+    </aside>
+    <section class="game-column" aria-label="To the Top game">
+      <div class="frame-label"><span>TO THE TOP</span><span id="frame-state">DIVE IN / BREAK FREE</span></div>
+      <div id="stage" class="stage" data-scene="title">
+        <canvas id="game" width="420" height="760" tabindex="0" aria-label="Roef’s underwater escape. Hold Space or Up to swim. Use Left and Right to steer. Press Escape to pause.">To the Top needs a browser with Canvas support.</canvas>
+        <div id="menu" class="screen title-screen">
+          <button class="icon-button title-settings" id="settings-menu" aria-label="Game settings"><svg><use href="#i-gear"/></svg></button>
+          <div class="title-heading"><p class="eyebrow">ROEF'S GREAT ESCAPE</p><h1>TO THE<span>TOP<span class="title-arrow">↑</span></span></h1><p class="tagline">Outswim the food chain.</p></div>
+          <div class="menu-bottom">
+            <div class="mode-picker" role="group" aria-label="Game mode"><button data-mode="classic" aria-pressed="true">Classic</button><button data-mode="daily" aria-pressed="false">Daily dive</button><button data-mode="zen" aria-pressed="false">Easy tide</button></div>
+            <p id="mode-description" class="mode-description">Three hunters. One way out.</p>
+            <button id="play" class="primary-button">LET'S SWIM <svg><use href="#i-arrow"/></svg></button>
+            <div class="title-links"><button id="how-to">How to play</button><span id="best-menu">YOUR FIRST ESCAPE AWAITS</span></div>
+          </div>
+        </div>
+        <div id="hud" class="hud" hidden>
+          <div class="hud-top"><div><div class="eyebrow" id="zone-name">THE ABYSS</div><div id="hearts" class="hearts" aria-label="3 lives"></div></div><div class="hud-actions"><span class="bubble-score"><svg><use href="#i-bubble"/></svg><b id="score">0</b></span><button id="pause" class="icon-button" aria-label="Pause game"><svg><use href="#i-pause"/></svg></button></div></div>
+          <div class="depth-rail" aria-hidden="true"><span>TOP</span><div class="depth-line"><i id="depth-fill"></i><b id="depth-fish"></b><em></em><em></em></div><span id="depth-label">0%</span></div>
+          <div id="banner" class="game-banner" role="status"></div>
+          <div class="hud-bottom"><span id="power-status"></span><span id="chase-status">KEEP SWIMMING</span></div>
+          <div id="first-hint" class="first-hint"><svg><use href="#i-arrow"/></svg><strong>Hold to swim. Drag to steer.</strong><span>Keyboard: ↑ / Space + ← →</span></div>
+        </div>
+        <section id="pause-screen" class="screen overlay" aria-labelledby="pause-heading" hidden><div class="overlay-content"><p class="eyebrow">TAKE A BREATHER</p><h2 id="pause-heading">JUST<br>FLOATING.</h2><p>The ocean can wait a moment.</p><button id="resume" class="primary-button">KEEP SWIMMING <svg><use href="#i-arrow"/></svg></button><button id="pause-settings" class="secondary-button">Settings</button><button id="quit" class="text-button">Back to the surface menu</button></div></section>
+        <section id="result-screen" class="screen overlay" aria-labelledby="result-title" hidden><div class="overlay-content"><p id="result-eyebrow" class="eyebrow">SO CLOSE, LITTLE FISH</p><h2 id="result-title">ANOTHER<br>DEEP BREATH.</h2><p id="result-copy"></p><div class="result-stats"><div><b id="result-progress">0%</b><span>ASCENT</span></div><div><b id="result-bubbles">0</b><span>BUBBLES</span></div><div><b id="result-time">0s</b><span>TIME</span></div></div><p id="result-record" class="record-note"></p><button id="retry" class="primary-button">ONE MORE DIVE <svg><use href="#i-arrow"/></svg></button><button id="result-home" class="text-button">Back to menu</button></div></section>
+        <div id="load-error" class="load-error" role="alert" hidden><h2>We hit a little current.</h2><p>The game couldn't load. Refresh to try again.</p><button id="reload" class="primary-button">RELOAD GAME</button></div>
+      </div>
+      <div class="under-game"><span><i></i> <span id="control-caption">HOLD TO SWIM · DRAG TO STEER</span></span><button id="sound" aria-label="Turn sound on" aria-pressed="false"><svg><use href="#i-mute"/></svg><span id="sound-caption">SOUND OFF</span></button></div>
+    </section>
+    <aside class="guide-side" aria-label="The ascent">
+      <p class="eyebrow">A LONG WAY FROM HOME</p><h2>Every little<br>fish has a story.</h2>
+      <ol class="zone-list"><li data-zone="2"><span class="zone-number">03</span><div><b>THE SHALLOWS</b><p>A little light. One last escape.</p></div></li><li data-zone="1"><span class="zone-number">02</span><div><b>THE REEF</b><p>Beautiful. Best not to touch.</p></div></li><li data-zone="0" class="active"><span class="zone-number">01</span><div><b>THE ABYSS</b><p>Even the dark has teeth.</p></div></li></ol>
+      <div class="field-note"><svg><use href="#i-fish"/></svg><p><strong>Small is your superpower.</strong>Slip through the nets.<br>The big fish can’t follow.</p></div>
+      <div class="keyboard-guide"><span><kbd>←</kbd><kbd>→</kbd> steer</span><span><kbd>SPACE</kbd> swim</span><span><kbd>ESC</kbd> pause</span></div>
+    </aside>
+  </main>
+  <footer class="site-footer"><span>MADE FOR ONE MORE TRY.</span><span>NO DOWNLOAD. JUST DIVE IN.</span></footer>
+  <dialog id="settings-dialog" aria-labelledby="settings-heading"><div class="dialog-header"><p class="eyebrow">MAKE YOURSELF AT HOME</p><button class="icon-button close-dialog" aria-label="Close settings"><svg><use href="#i-close"/></svg></button></div><h2 id="settings-heading">Your kind of ocean.</h2><label class="setting"><span><b>Sound</b><small>Underwater tones and little victories.</small></span><input id="setting-sound" type="checkbox" role="switch"></label><label class="setting"><span><b>Auto-swim</b><small>Roef swims up. You focus on steering.</small></span><input id="setting-auto" type="checkbox" role="switch"></label><label class="setting"><span><b>Reduced motion</b><small>Less scenery movement and screen shake.</small></span><input id="setting-motion" type="checkbox" role="switch"></label><p class="dialog-note">Settings and personal bests stay on this device.</p><button class="primary-button close-dialog">ALL SET</button></dialog>
+  <dialog id="help-dialog" aria-labelledby="help-heading"><div class="dialog-header"><p class="eyebrow">A QUICK SWIMMING LESSON</p><button class="icon-button close-dialog" aria-label="Close how to play"><svg><use href="#i-close"/></svg></button></div><h2 id="help-heading">Small fish. Smart moves.</h2><div class="lesson"><b>01</b><p><strong>Keep moving up.</strong>Hold anywhere in the water to swim. Drag left or right to steer. Lift to slow down. On a keyboard, hold Space / ↑ / W and steer with ← → or A D.</p></div><div class="lesson"><b>02</b><p><strong>Follow the bubbles.</strong>Collect the bright rings. Dodge creatures; rocks block your path. Cyan shields absorb a hit. Yellow bolts give you a burst of speed.</p></div><div class="lesson"><b>03</b><p><strong>Turn small into mighty.</strong>Swim through all three nets to trap your hunters, then reach the surface. Watch the warning at the bottom: the hunter is getting close.</p></div><p class="dialog-note">Need a gentler start? Choose Easy tide, or enable Auto-swim in Settings. Pause any time with Esc or P.</p><button class="primary-button close-dialog">GOT IT <svg><use href="#i-arrow"/></svg></button></dialog>
+  <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+  <div class="orientation-note" role="status"><svg viewBox="0 0 48 64" aria-hidden="true"><rect x="9" y="3" width="30" height="56" rx="4"/><path d="M24 42V18m-7 8 7-8 7 8M21 53h6"/></svg><h2>A little more up, please.</h2><p>Turn your phone upright, or make this window taller.<br>Roef’s adventure plays in portrait.</p></div>
+  <noscript><div class="load-error">Turn on JavaScript to help Roef reach the top.</div></noscript>
 </body>
 </html>
